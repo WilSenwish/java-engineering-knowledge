@@ -61,10 +61,10 @@ Java-Engineering-Knowledge/
 
 | 站点 | 目录抓取 | 内容沉淀 | 状态 |
 |------|----------|----------|------|
-| javaguide.cn | ✅ 13/13 板块 | ✅ 17 篇（P0 8 + 并发中/下 + Spring + MyBatis + JVM垃圾回收 + Redis数据结构 + OS面试题上 + 网络面试题上 + 线上排查 + JDK工具）+ 五段式加工（01.1~01.6、02.1~02.3、03.1~03.2、05.1） | ✅ 循环1~9 完成 |
-| javaup.chat | ✅ sitemap 全站 888 URL（hub 页 403 已绕过） | ✅ 8 篇（HashMap/ConcurrentHashMap + 可观测性6篇）+ 五段式加工（01.2/01.3/05.2/01.7/02.3/03.3） | 进行中 |
+| javaguide.cn | ✅ 13/13 板块 | ✅ 19 篇（P0 8 + 并发中/下 + Spring + MyBatis + 微服务 + JVM垃圾回收 + Redis数据结构 + OS面试题上 + 网络面试题上 + 线上排查 + JDK工具）+ 五段式加工（01.1~01.6、02.1~02.3、03.1~03.2、05.1） | ✅ 循环1~9 完成 |
+| javaup.chat | ✅ sitemap 全站 888 URL（hub 页 403 已绕过） | ✅ 14 篇（HashMap/ConcurrentHashMap + 可观测性6篇 + 设计模式2篇 + 锁升级 + SpringBoot自动配置 + 方案设计2篇）+ 五段式加工（01.2/01.3/05.2/01.7/02.3/03.3） | ✅ 循环10~11 完成 |
 | xiaolincoding.com | ✅ 图解网络/系统/MySQL/Redis + 24套面试题 | ✅ 21 篇（+TCP可靠性/虚拟内存/过期淘汰）+ 五段式加工（01.5/01.6/02.1/02.2） | ✅ 循环1~9 完成 |
-| nageoffer.com | ✅ 5 个项目卡片 | ✅ Ragent V2 + oneThread + 牛券/12306/Link 三大项目深挖 + 12306 技术文档 3 篇 + 五段式加工（07.1） | ✅ 循环1~12 完成 |
+| nageoffer.com | ✅ 5 个项目卡片 | ✅ Ragent V2 + oneThread + 牛券/12306/Link 三大项目深挖 + 12306 技术文档 3 篇 + **Ragent 源码级走读**（945 文件类级别）+ 五段式加工（07.1） | ✅ 循环1~26 完成 |
 | xiaolinnote.com | ✅ Agent/RAG/LLM/AI编程 89 题 | ✅ 89 题清单 + 图解Agent/RAG万字图解 + ReAct/Multi-Agent + ClaudeCode/Codex 目录 + **Agent 30 题 + RAG 23 题 + 工具调用 22 题 + AI 编程 14 题全部精解（89/89）**+ **工程方法论 4 篇万字长文**（Harness/Loop/Graph Engineering），五段式加工（06.1 十九模块） | ✅ 89题逐题加工全部完成（Agent 30/30 + RAG 23/23 + 工具调用 22/22 + AI 编程 14/14）+ 工程方法论 4/4 完成 |
 
 ### 已完成文件清单（sources/）
@@ -278,7 +278,7 @@ docs/
 │   ├── 03.2-microservices.md                  # 微服务架构工程化（拆分/治理/一致性/稳定性）
 │   └── 03.3-solution-design.md                # 高并发方案设计精选（秒杀五层过滤+库存矩阵/雪崩防护四层矩阵）
 ├── 06-performance-ai/
-│   └── 06.1-ai-frontier.md                    # AI前沿（6模块：Agent/RAG题库/工具调用/AI编程/RAG全链路/推理与协作模式）
+│   └── 06.1-ai-frontier.md                    # AI前沿（十九模块：Agent/RAG/工具调用/AI编程四题库89题 + 工程方法论 + RAG全链路/推理协作模式）
 ├── 07-business-cases/
 │   └── 07.1-projects.md                       # 实战项目案例库（Ragent V2深挖 + 源码级走读 + oneThread + 牛券/12306/Link 三大项目五段式深挖）
 ├── 04-delivery-cloudnative/
@@ -290,9 +290,10 @@ docs/
 
 ### 状态：循环 1~26 完成 ✅
 
-- **sources/** 收集层：166 个 md（128 篇内容 + 5 站点目录），全部带溯源元信息；
+- **sources/** 收集层：166 个 md（161 篇内容 + 5 站点目录），全部带溯源元信息；
 - **docs/** 加工层：19 个 md（18 篇知识域文档 + 索引），七大知识域全部覆盖，统一五段式；
 - **远程仓库**：https://github.com/WilSenwish/Java-Engineering-Knowledge （main 分支；网络抖动时仅保本地）；
 - **循环10~12 解决的历史遗留**：域5 监控三支柱空白、设计模式换源受阻、SpringBoot 付费页空白、牛券/12306/Link 项目深挖均已补齐；
 - **循环13~25（已完成 · xiaolinnote 89 题全部加工完成 + 工程方法论 4 篇）**：Agent 30/30 + RAG 23/23 + 工具调用 22/22 + AI 编程 14/14，全部五段式并入 06.1（十九模块）；循环25 追加 Harness/Loop/Graph Engineering 工程方法论（模块十九）；
+- **循环26（已完成 · Ragent 源码级走读）**：浅克隆 nageoffer/ragent（945 Java 文件/约 11.9 万行）4 路并行调研，07.1 新增模块八（类级别走读 + 踩坑源码级对策表 14 条）；
 - **后续扩充方向**（非本轮范围）：传统云原生（Docker/K8s/CI-CD）、Prometheus 多集群长期存储与 SLO、OpenTelemetry、javaup 方案设计其余 14 篇、设计模式其余两篇（factory/structural/behavioral）、nageoffer 牛券/12306/Link GitHub 源码级走读、大模型工程专题（Transformer/KV Cache/LoRA/MoE）。
