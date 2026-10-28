@@ -1,6 +1,6 @@
 # Java 后端开发 & 架构 知识库 · 总索引
 
-本地内容站：打开 `site/index.html`。改完 `docs/` 后执行 `python3 tools/build_site.py` 重新生成（需要 Python 包 `markdown`）。
+本地内容站：打开 `site/index.html`。改完 `docs/` 后执行 `python3 tools/build_site.py` 重新生成（需要 Python 包 `markdown`）。版式、卡片、线条和朗读规则见 [tools/内容站规约.md](tools/内容站规约.md)。
 
 > 依据《Java 后端开发 & 架构・复杂生产环境工程化落地全链路知识库构建规划.md》执行。
 > 本文件是知识库总入口：定义内容来源、处理顺序、目录规范与沉淀标准。
