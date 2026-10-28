@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details open><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="active" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="053-opentelemetry-slo-prometheus">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</h1>
+<blockquote>
+<p><strong>所属知识域</strong>：域5 生产运维与可观测性
+<strong>加工来源</strong>：OpenTelemetry 信号与 Java 埋点文档；Google SRE《Service Level Objectives》；Thanos Design（sources/observability/）
+<strong>关联文档</strong>：<a href="05.2-observability.html">05.2 可观测性三支柱</a>（Prometheus / 日志 / SkyWalking）、<a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 云原生</a>（发布与探针）</p>
+</blockquote>
+<hr />
+<h2 id="opentelemetry">模块一 · OpenTelemetry：信号怎么串起来</h2>
+<h3 id="1">1. 核心原理</h3>
+<p>OTel 采集并导出信号：Trace（一次请求穿过哪些组件）、Metric（某个时刻的测量）、Log（事件记录）、Baggage（在信号之间传递的上下文）。它们靠 <strong>trace context</strong> 对齐：span 用 parent/links，指标用 exemplar 带上 trace id，日志把同一 context 写进记录。没有传递，三支柱只是三套互不认识的数据。</p>
+<h3 id="2">2. 生产落地</h3>
+<p>Java 先上 <strong>Java agent</strong>（启动时改字节码，按依赖自动埋点），Spring 应用可用 starter。入口从入站消息 extract context，出口 inject 到出站 HTTP/MQ。日志继续用 SLF4J/Logback，用 appender 桥进 OTel，或打到 stdout 再由采集器转发；OTel 的 Logger API 是桥，不是业务日志门面。</p>
+<p>语义约定规定 span 名、指标单位和属性键，跨服务才能对上同一字段。</p>
+<h3 id="3">3. 踩坑规避</h3>
+<ul>
+<li>只开 trace、日志不带 trace id：排障时对不上。</li>
+<li>本地和测试没装 agent，手写埋点又假定 <code>GlobalOpenTelemetry</code> 一定存在：要能退到空实现。</li>
+<li>把全部日志改成直连 Collector：应用要自己排队和重试；吞吐敏感时仍走文件/stdout。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<p>已有 Micrometer / SkyWalking 时用官方 shim 桥接，不要两套 SDK 各打一份相同指标。Collector 放在进程外做采样、改名和路由，应用只负责产生信号。</p>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Java agent</th>
+<th>手写 span</th>
+<th>SkyWalking agent（见 05.2）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>接入</td>
+<td><code>-javaagent</code></td>
+<td>业务代码</td>
+<td>同样是 agent</td>
+</tr>
+<tr>
+<td>标准</td>
+<td>OTel 语义约定、OTLP</td>
+<td>取决于你写什么</td>
+<td>SkyWalking 协议，可再导出</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>新系统、要换后端</td>
+<td>领域跨度（下单号、租户）</td>
+<td>已在 SkyWalking 上的存量</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="slo">模块二 · SLO 与错误预算</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<p>来自 Google SRE，三个词不要混：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>是什么</th>
+<th>没有它会怎样</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SLI</td>
+<td>用户在乎的量化指标：成功率、延迟分位</td>
+<td>看了一堆机器指标仍不知道用户是否受苦</td>
+</tr>
+<tr>
+<td>SLO</td>
+<td>SLI 的目标，例如 99% 的 Get 在 100ms 内</td>
+<td>用户和值班各有一套「应该多快」</td>
+</tr>
+<tr>
+<td>SLA</td>
+<td>带后果的合同（赔偿、违约）</td>
+<td>没后果的就是 SLO</td>
+</tr>
+</tbody>
+</table>
+<p>可用性常用「成功请求 / 合法请求」，不是机器开机时间。100% 既做不到，也不该当目标：服务太稳会让别人把你当成不会挂（Chubby 的教训是故意把可用性压回目标，逼出隐藏依赖）。</p>
+<p><strong>错误预算</strong> = 允许达不到 SLO 的那一段比例。99.9% 的月目标大约留下 0.1% 的失败额度。预算还在，可以发版；预算烧完，先还可靠性。</p>
+<h3 id="2_1">2. 生产落地</h3>
+<p>面向用户的服务看可用性、延迟、吞吐；存储再加持久性；管道看端到端延迟和吞吐。指标尽量少，服务端采不到的用户体验要在客户端补（页面变可用的时间，不是只看后端 RT）。</p>
+<p>SLO 写清测量窗口和条件：「1 分钟平均、全部后端上，99% 的 Get 小于 100ms」。交互用户和批处理用户拆开，不要一个数字打两拨人。</p>
+<p>预算按天或周看消耗，按月向管理层汇报。发版节奏跟剩余预算挂钩，而不是跟「这周想不想上」。</p>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li>把当前水位直接写成 SLO：以后每次优化都会被旧数字绑架。</li>
+<li>追求「永远可用、延迟不随流量涨」：设计和机器都会贵到没有用户需要的程度。</li>
+<li>用平均值当唯一 SLI：长尾被平均掉。SRE 原文允许多层目标（90% / 99% / 99.9% 各一个阈值）。</li>
+<li>把内部 SLA 罚款和工程 SLO 当成同一份文档。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<p>告警打在「预算燃烧速度」上，而不是每一个 5xx。慢速燃烧留给工单，快速燃烧（一小时烧掉一天预算）才叫醒人。与 <a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2</a> 的发布门禁对齐：错误率越过预算阈值就停止放量。</p>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>说法</th>
+<th>实际</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>我们要五个九</td>
+<td>先写清 SLI 是请求成功率还是进程存活</td>
+</tr>
+<tr>
+<td>监控大盘很全</td>
+<td>用户 SLI 可能一个都没有</td>
+</tr>
+<tr>
+<td>这月没故障所以很稳</td>
+<td>可能只是没有流量打到缺陷上；预算应用来允许有计划的变更</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="thanosprometheus">模块三 · Thanos：Prometheus 跨集群与长期保存</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<p>Prometheus 本地 TSDB 按时间切成不可变 block（ULID 目录，内有 chunks、index、<code>meta.json</code>）。Thanos 不改这套格式，只把 block 放到对象存储，并用同一套 <strong>Store gRPC API</strong> 让查询方分不清数据来自活着的 Prometheus 还是历史桶。</p>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>Sidecar</strong>：跟每个 Prometheus 一起跑，把新 block 上传；<code>meta.json</code> 写入 external labels（集群、环境），查询时先按标签丢掉无关块。</li>
+<li><strong>Store</strong>：盯着桶，用时间范围和标签过滤，缓存 index，chunk 按需读。chunk 太大，不进缓存。</li>
+<li><strong>Querier</strong>：无状态，横向加实例，在 Store API 上执行 PromQL。</li>
+<li><strong>Compactor</strong>：单独进程，合并小块、降采样、执行保留期。不要跑多份去压同一个桶。</li>
+<li><strong>Rule</strong>：告警和记录规则离开单机 Prometheus，对着全局查询评估。</li>
+</ul>
+<p>本地盘保留从数周缩到数小时，长期曲线放对象存储。</p>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ul>
+<li>Compactor 开成多副本同时压一个桶：块会被写乱。</li>
+<li>不打 external labels：多集群序列在 Querier 里叠成一条。</li>
+<li>用 Thanos 解决「指标基数爆炸」：它解决的是留存和全局查询，高基数仍会打满 Prometheus 内存。</li>
+<li>把所有历史查询都打到未降采样的原始块：Store 对对象存储的请求次数跟着查询习惯涨。</li>
+</ul>
+<h3 id="4_2">4. 优化进阶</h3>
+<p>按地域分桶，等于给 Store 做功能分片。冷数据降采样后再给大盘。Querier 是唯一明确可以随意加的无状态层。</p>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>单机 Prometheus</th>
+<th>Thanos</th>
+<th>远程写到别的库</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>查询语言</td>
+<td>PromQL</td>
+<td>仍是 PromQL</td>
+<td>看目标系统</td>
+</tr>
+<tr>
+<td>留存</td>
+<td>本地盘</td>
+<td>对象存储</td>
+<td>目标库</td>
+</tr>
+<tr>
+<td>多集群</td>
+<td>各自看</td>
+<td>external labels + Querier</td>
+<td>取决于写入标签</td>
+</tr>
+<tr>
+<td>运维</td>
+<td>低</td>
+<td>Sidecar/Store/Compactor 要分开管</td>
+<td>少一个查询层，多一种数据模型</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_1">待补充清单</h2>
+<ul>
+<li>OTel 信号与 Java agent、SLO/错误预算、Thanos 组件：<strong>已完成</strong>（循环36）</li>
+<li>K8s 指标与 HPA → <a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 模块四</a></li>
+<li>SkyWalking 源码 4–10 → <a href="05.2-observability.html">05.2 模块六</a></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

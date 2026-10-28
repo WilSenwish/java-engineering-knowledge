@@ -25,18 +25,20 @@
 | 域1 | [01.4 JVM 内核与线上排查](01-java-core/01.4-jvm.md) | javaguide/java-jvm | ✅ |
 | 域1（计算机基础） | [01.5 计算机网络 · TCP/HTTP/I/O 多路复用/体系结构](01-java-core/01.5-network-tcp.md) | xiaolincoding/tcp + http + IO多路复用 + tcp可靠性 + 网络体系 | ✅ |
 | 域1（计算机基础） | [01.6 操作系统基础与进程线程模型](01-java-core/01.6-os-fundamentals.md) | javaguide/os-questions-01 + 小林虚拟内存 | ✅ |
-| 域1 | [01.7 设计模式与编码工程化](01-java-core/01.7-design-patterns.md) | javaup/design-pattern（总览原则 + 单例深度） | ✅（循环11） |
+| 域1 | [01.7 设计模式与编码工程化](01-java-core/01.7-design-patterns.md) | javaup/design-pattern（总览原则 + 单例 + 工厂 + 结构型 + 行为型 + MVC） | ✅（循环11 + 27，五模块） |
 | 域2 后端技术组件工程化 | [02.1 MySQL 工程化](02-backend-components/02.1-mysql.md) | javaguide/mysql + 小林index/mvcc/索引失效/锁/日志/BufferPool/SQL执行链路 | ✅ |
 | 域2 | [02.2 Redis 工程化](02-backend-components/02.2-redis.md) | javaguide/redis 上+下 + 小林AOF/RDB/缓存三难题/主从/一致性/哨兵/Redlock/大Key/Cluster/过期淘汰 | ✅ |
 | 域2 | [02.3 Spring & MyBatis 工程化](02-backend-components/02.3-spring-mybatis.md) | javaguide/Spring+MyBatis + javaup/SpringBoot自动配置 | ✅ |
 | 域3 分布式与高可用架构 | [03.1 分布式理论与核心方案](03-distributed/03.1-distributed-theory.md) | javaguide/distributed-system | ✅ |
 | 域3 | [03.2 微服务架构工程化](03-distributed/03.2-microservices.md) | javaguide/microservices | ✅ |
 | 域3 | [03.3 高并发方案设计精选](03-distributed/03.3-solution-design.md) | javaup/solution-design（秒杀库存 + 雪崩防护） | ✅（循环11） |
-| 域6 性能优化与架构演进 | [06.1 AI 前沿：Agent/RAG/LLM/AI编程](06-performance-ai/06.1-ai-frontier.md) | xiaolinnote 89题全部（Agent 30题 + RAG 23题 + 工具调用22题 + AI编程14题）+ 工程方法论 4 篇（Harness/Loop/Graph）+ 图解Agent/RAG万字图解 + ReAct/Multi-Agent + ClaudeCode/Codex | ✅（循环25 · 89题 + 工程方法论全部完成） |
-| 域7 业务场景与实战案例 | [07.1 实战项目案例库](07-business-cases/07.1-projects.md) | nageoffer 5项目（Ragent/oneThread/oneCoupon/12306/shortlink + 12306技术文档3篇）+ Ragent 源码级走读（945 文件类级别） | ✅（循环26 · Ragent 源码级走读完成） |
+| 域6 性能优化与架构演进 | [06.1 AI 前沿](06-performance-ai/06.1-ai-frontier.md) | 89 题 + 方法论 + 模块二十至二十四（含选型四门与有效上下文） | ✅（循环35） |
+| 域7 业务场景与实战案例 | [07.1 实战项目案例库](07-business-cases/07.1-projects.md) | 5 项目 + Ragent/12306/Link 源码走读（模块八~十） | ✅（循环31） |
 | 域4 工程交付与云原生 | [04.1 AI 原生研发与 Coding Agent 工程化](04-delivery-cloudnative/04.1-ai-native-delivery.md) | xiaolinnote 图解ClaudeCode/Codex + oneThread | ✅（首发） |
+| 域4 | [04.2 传统云原生工程化（Docker · K8s · 发布策略）](04-delivery-cloudnative/04.2-cloud-native.md) | javaup Docker 三篇 + 发布策略 + link-flow；xiaolincoding Docker 面试 | ✅（循环28） |
 | 域5 生产运维与可观测性 | [05.1 生产运维与线上排查实战](05-ops-observability/05.1-troubleshooting.md) | javaguide 线上问题排查 + JDK工具总结 | ✅（首发） |
 | 域5 | [05.2 可观测性三支柱深度](05-ops-observability/05.2-observability.md) | javaup 可观测性体系/SkyWalking 源码1-3/分布式日志/系统性能监控 | ✅（循环10） |
+| 域5 | [05.3 OTel · SLO · Thanos](05-ops-observability/05.3-otel-slo-thanos.md) | OpenTelemetry 官方 + Google SRE SLO + Thanos Design | ✅（循环36） |
 
 ## 三、与收集层的协作规则
 
@@ -147,6 +149,15 @@
   - 07.1 新增**模块八：Ragent 源码级走读（类级别深潜）**——关键接口签名、调用链、并发降级细节、踩坑源码级对策表（14 条）、走读结论选型对比
   - 待补充清单：Ragent 源码级拆解 → 已完成
   - 两级索引更新：README sources 165→166、状态循环 1~26；docs/README 域7 八模块
+- **循环27（已完成 · 任务：设计模式补齐）**：javaup 抓取工厂/结构型/行为型/MVC 4 篇（sources/javaup/design-pattern/ 现 6 篇）→ 五段式加工：
+  - 01.7 新增**模块三：工厂三变体与选型**（简单/方法/抽象对比表 + Spring IoC 即工厂裁决 + 开闭倾斜）
+  - 01.7 新增**模块四：结构型（代理·享元·不可变）**（AOP 映射、IntegerCache 锁陷阱、防御性拷贝）
+  - 01.7 新增**模块五：行为型（策略·模板·观察者·责任链·状态）**（Spring Map 策略工厂 + 与 Ragent/12306 责任链交叉引用 + 策略 vs 状态边界）
+  - 01.7 待补充清单：工厂/结构型/行为型/MVC **已完成**；建造者/原型与适配器/装饰器/门面专篇标注可后续按需补
+  - 两级索引更新：README sources 166→170、状态循环 1~27；javaup 14→18 篇
+- **循环28（已完成 · 传统云原生）**：抓取 javaup Docker 核心/实战/编排 3 篇 + 发布策略 + link-flow 蓝绿灰度滚动 + 小林 Docker 面试题 → 新建 **04.2**（三模块：Docker 核心、Compose→K8s 最小闭环、发布策略与 CI/CD 门禁）；04.1 待补充三项迁入 04.2 并清零
+- **循环29（已完成 · 大模型工程专题）**：xiaolinnote llm 题库抓取 Transformer / MHA优化 / KV Cache / LoRA / MoE + 目录页 → 06.1 新增**模块二十**
+- **循环30（已完成 · 12306 源码走读）**：浅克隆 nageoffer/12306（414 Java / 约 3 万行）→ sources/nageoffer/12306/source-walkthrough.md；07.1 新增**模块九**（v2 购票链、沿途分段 Lua+lockSeat、选座三降级、席别公平锁、登录映射表+布隆）
 
 ## 五、全量完成度总览
 
@@ -155,9 +166,9 @@
 | 域1 Java核心与编码工程化 | 7（01.1~01.7） | ✅ |
 | 域2 后端技术组件工程化 | 3（02.1~02.3） | ✅ |
 | 域3 分布式与高可用架构 | 3（03.1~03.3） | ✅ |
-| 域4 工程交付与云原生 | 1（04.1，AI 原生方向） | ✅ 首发；传统 CI/CD·Docker·K8s 待扩充 |
-| 域5 生产运维与可观测性 | 2（05.1 + 05.2） | ✅ 监控三支柱已补全 |
-| 域6 性能优化与架构演进 | 1（06.1，十九模块） | ✅ Agent 30 题 + RAG 23 题 + 工具调用 22/22 + AI 编程 14/14 全解（89/89）+ 工程方法论 4 篇（Harness/Loop/Graph） |
-| 域7 业务场景与实战案例 | 1（07.1，八模块） | ✅ 三大业务项目深挖 + Ragent 源码级走读完成 |
+| 域4 工程交付与云原生 | 2（04.1 AI 原生 + 04.2 传统云原生） | ✅ 循环28 补齐 Docker/K8s/发布策略 |
+| 域5 生产运维与可观测性 | 3（05.1 + 05.2 + 05.3） | ✅ 三支柱 + OTel/SLO/Thanos |
+| 域6 性能优化与架构演进 | 1（06.1，二十四模块） | ✅ llm 主干题收到选型与长上下文 |
+| 域7 业务场景与实战案例 | 1（07.1，十模块） | ✅ Ragent / 12306 / Link 源码走读；牛券无公开仓库 |
 
-**后续扩充方向**（非本轮范围）：传统云原生（Docker/K8s/CI-CD）、Prometheus 多集群长期存储（Thanos/Cortex）与 SLO 错误预算、OpenTelemetry 规范、javaguide 分布式/微服务 P1 篇目、设计模式专题其余篇目（javaup sitemap 已定位 URL，待抓取）、nageoffer 牛券/12306/Link GitHub 源码级走读、大模型工程专题（Transformer/KV Cache/LoRA/MoE）。
+**循环 39**：inode、HTTPS RSA 握手、WebSocket、零拷贝、Nacos、Gateway 已写入。仍无完整正文的不编：牛券源码、Claude Code 源码分篇、压测、Sentinel 细则、JVM/Seata 源码长系列。

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01.3 Java 并发编程工程化</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details open><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="active" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="013-java">01.3 Java 并发编程工程化</h1>
+<blockquote>
+<p>知识域：域1 Java核心与编码工程化
+加工来源：sources/javaguide/java-concurrent/java-concurrent-questions-01.md
+关联文档：<a href="01.2-collections.html">01.2 集合</a>（并发容器）/ <a href="03-distributed/03.1-distributed-theory.html">03.1 分布式理论</a>（分布式锁）</p>
+</blockquote>
+<h2 id="_1">模块一：线程与进程基础</h2>
+<h3 id="1">1. 核心原理</h3>
+<ul>
+<li><strong>进程 vs 线程</strong>：进程是资源分配基本单位（独立地址空间）；线程是 CPU 调度基本单位（共享进程内存，私有栈/程序计数器）。一个进程可含多线程。</li>
+<li><strong>线程创建</strong>：继承 <code>Thread</code> / 实现 <code>Runnable</code>（无返回值）/ 实现 <code>Callable</code>+<code>FutureTask</code>（有返回值、可抛异常）/ 线程池（<strong>生产唯一推荐方式</strong>，避免频繁创建销毁）。</li>
+<li><strong>六种状态</strong>：NEW → RUNNABLE → BLOCKED / WAITING / TIMED_WAITING → TERMINATED（JDK <code>Thread.State</code>）。</li>
+</ul>
+<pre><code class="language-java">// 生产标准：Callable + 线程池 + Future 超时控制
+ExecutorService pool = Executors.newFixedThreadPool(8);
+Future&lt;Result&gt; future = pool.submit(() -&gt; doQuery());
+try {
+    Result r = future.get(3, TimeUnit.SECONDS);  // 超时快速失败，避免无限阻塞
+} catch (TimeoutException e) {
+    future.cancel(true);
+    // 降级逻辑
+}
+</code></pre>
+<h3 id="2">2. 生产落地</h3>
+<ul>
+<li><strong>线程数标定</strong>：CPU 密集型 ≈ <code>N(cpu) + 1</code>；IO 密集型 ≈ <code>N(cpu) / (1 - 阻塞系数)</code>，阻塞系数 0.8~0.9 时 ≈ <code>N(cpu) × 2</code>~<code>N(cpu) × 10</code>，需压测校准。</li>
+<li><strong>线程命名</strong>：自定义 <code>ThreadFactory</code> 按业务命名（<code>biz-order-worker-1</code>），出问题时 <code>jstack</code> 一眼定位。</li>
+<li><strong>上下文切换成本</strong>：约 1~10 μs/次 + 缓存失效开销；无谓地"一请求一线程"在 C10K 下不可用。</li>
+</ul>
+<h3 id="3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jstack</code> 大量 BLOCKED</td>
+<td>锁竞争（synchronized 块过大）</td>
+<td>缩小临界区；分段锁；无锁结构</td>
+</tr>
+<tr>
+<td>CPU 100% 但负载不高</td>
+<td>死循环（如 JDK7 HashMap 并发死循环）</td>
+<td><code>top -H</code> 定位线程 → <code>jstack &lt;pid&gt;</code> 多次对比</td>
+</tr>
+<tr>
+<td>请求偶发超时无规律</td>
+<td>频繁 GC 或线程上下文抖动</td>
+<td>看 GC 日志 + 线程状态分布</td>
+</tr>
+<tr>
+<td><code>OutOfMemoryError: unable to create new native thread</code></td>
+<td>线程数超限（<code>ulimit -u</code> / 堆外内存）</td>
+<td>有界线程池 + 拒绝策略</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong><code>ThreadLocal</code></strong>：线程封闭，注意 <strong><code>remove()</code></strong>（线程池复用场景不清理会导致：① 内存泄漏 ② 脏数据串号）。<code>InheritableThreadLocal</code> 跨线程传递有局限（线程池场景失效），用 <code>TTL</code>（TransmittableThreadLocal）封装。</li>
+<li><strong>虚拟线程（JDK21）</strong>：<code>Thread.ofVirtual()</code>，挂起时不占平台线程，适合<strong>高并发 IO 密集型</strong>；CPU 密集/临界区加锁密集场景收益有限。Spring Boot 3.2+ 可 <code>spring.threads.virtual.enabled=true</code> 开启。</li>
+</ul>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>开销</th>
+<th>返回值</th>
+<th>异常</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>继承 Thread</td>
+<td>高</td>
+<td>无</td>
+<td>难捕获</td>
+<td>不推荐</td>
+</tr>
+<tr>
+<td>Runnable</td>
+<td>高</td>
+<td>无</td>
+<td>内部吞</td>
+<td>简单任务</td>
+</tr>
+<tr>
+<td>Callable+Future</td>
+<td>高</td>
+<td>有</td>
+<td>可捕获</td>
+<td>需要结果/超时</td>
+</tr>
+<tr>
+<td>线程池</td>
+<td>低（复用）</td>
+<td>有</td>
+<td>可捕获</td>
+<td><strong>生产默认</strong></td>
+</tr>
+<tr>
+<td>虚拟线程</td>
+<td>极低</td>
+<td>有</td>
+<td>可捕获</td>
+<td>高并发 IO（JDK21）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块二：线程协作与通信</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong><code>wait</code>/<code>notify</code></strong>：必须在 synchronized 块内（否则 <code>IllegalMonitorStateException</code>）；<code>wait</code> 释放锁并进入等待队列，被 <code>notify</code> 唤醒后重新竞争锁。JDK5+ 优先用 <code>java.util.concurrent</code> 的 <code>Condition</code>/<code>LockSupport</code>。</li>
+<li><strong><code>sleep</code> vs <code>wait</code></strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>sleep</th>
+<th>wait</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>所属类</td>
+<td>Thread 静态方法</td>
+<td>Object 实例方法</td>
+</tr>
+<tr>
+<td>锁</td>
+<td>不释放</td>
+<td>释放（进入等待前必须持有锁）</td>
+</tr>
+<tr>
+<td>唤醒</td>
+<td>超时自动</td>
+<td>notify/notifyAll/超时</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>暂停执行</td>
+<td>线程间通信</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>join</code></strong>：等待目标线程终止（内部基于 <code>wait</code>）；<code>interrupt</code> 是协作式中断（置标志位，需目标线程响应，如抛 <code>InterruptedException</code> 或检查 <code>isInterrupted</code>）。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>优雅停机</strong>：<code>@PreDestroy</code> 中先置"停止接收"标志 → 等待存量任务完成（<code>executor.shutdown()</code> + <code>awaitTermination</code>）→ 再销毁。Spring Boot <code>server.shutdown=graceful</code>。</li>
+<li><strong>中断响应规范</strong>：可中断方法捕获 <code>InterruptedException</code> 后<strong>恢复中断状态</strong>再退出：<code>Thread.currentThread().interrupt(); return;</code>——不可默默吞掉。</li>
+</ul>
+<pre><code class="language-java">// 规范的中断处理
+public void run() {
+    while (!Thread.currentThread().isInterrupted()) {
+        try {
+            Task t = queue.poll(1, TimeUnit.SECONDS);
+            if (t != null) t.execute();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // 恢复中断标志，退出循环
+        }
+    }
+}
+</code></pre>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ol>
+<li><strong><code>notify</code> 唤醒"错误"的等待者</strong>：多个条件共用一个对象锁时，<code>notify</code> 随机唤醒一个可能不满足条件的线程。用 <code>ReentrantLock</code> + 多个 <code>Condition</code>（如"不满"、"不空"分离）。</li>
+<li><strong><code>wait</code> 未在循环中检查条件</strong>：虚假唤醒（spurious wakeup）会导致提前执行。<strong>必须 <code>while (!condition) wait();</code></strong>。</li>
+<li><strong><code>synchronized</code> 方法与 <code>wait</code> 的锁对象</strong>：<code>synchronized</code> 方法锁的是 <code>this</code>，<code>wait</code> 也必须针对 <code>this</code>，别在同步块里对别的对象 <code>wait</code>。</li>
+</ol>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>AQS 体系</strong>：<code>ReentrantLock</code>（可中断、可超时、可公平）、<code>Semaphore</code>（限流）、<code>CountDownLatch</code>（等待 N 个完成）、<code>CyclicBarrier</code>（相互等待）均基于 AQS（state + CLH 队列）。</li>
+<li><strong><code>CompletableFuture</code></strong>：异步编排（<code>thenApply</code>/<code>thenCombine</code>/<code>allOf</code>），注意默认线程池 <code>ForkJoinPool.commonPool()</code> 的争用——生产指定业务线程池。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>协作工具</th>
+<th>语义</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wait/notify</td>
+<td>底层</td>
+<td>不直接用</td>
+</tr>
+<tr>
+<td>ReentrantLock + Condition</td>
+<td>显式锁 + 多条件</td>
+<td>生产者消费者（有界阻塞队列内部即此实现）</td>
+</tr>
+<tr>
+<td>CountDownLatch</td>
+<td>一次性等待 N 完成</td>
+<td>主线程等分片任务汇总</td>
+</tr>
+<tr>
+<td>CyclicBarrier</td>
+<td>N 方互相到达屏障</td>
+<td>并行计算分阶段</td>
+</tr>
+<tr>
+<td>Semaphore</td>
+<td>许可限流</td>
+<td>接口并发度控制</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">模块三：死锁与并发问题排查</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>死锁四必要条件</strong>（缺一不可）：互斥、持有并等待（请求新资源时不释放已有）、不可剥夺、循环等待。<strong>破坏任一即可预防</strong>（如按固定顺序加锁破坏循环等待）。</li>
+<li><strong>活锁与饥饿</strong>：活锁=线程互相"礼让"持续重试无进展；饥饿=某线程长期得不到资源（优先级不合理）。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>加锁顺序规范</strong>：跨多个锁的操作按全局约定顺序（如按资源 ID 升序）获取；code review 卡点。</li>
+<li><strong>锁超时</strong>：<code>tryLock(timeout)</code> 替代无限 <code>lock()</code>，失败走降级/重试。</li>
+</ul>
+<pre><code class="language-java">// tryLock 超时模式
+if (lock.tryLock(100, TimeUnit.MILLISECONDS)) {
+    try {
+        // 临界区
+    } finally {
+        lock.unlock();
+    }
+} else {
+    // 降级：返回默认值 / 入重试队列
+}
+</code></pre>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ul>
+<li><strong><code>jstack</code> 查死锁</strong>：输出含 <code>Found one Java-level deadlock</code> 块，直接给出互相等待的线程栈；无此提示时搜 <code>BLOCKED</code> + <code>waiting to lock</code> 交叉比对。</li>
+<li><strong><code>jvisualvm</code>/Arthas <code>thread -b</code></strong>：一键定位阻塞其他线程的"罪魁祸首"线程。</li>
+<li><strong>数据库死锁</strong>：与 JVM 死锁排查同思路（<code>SHOW ENGINE INNODB STATUS</code> 看 LATEST DETECTED DEADLOCK），根因多为行锁顺序不一致 + 间隙锁。</li>
+</ul>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>锁细化粒度</strong>：锁范围=数据范围（如 <code>ConcurrentHashMap</code> 桶级锁）；读写分离用 <code>ReentrantReadWriteLock</code>（读多写少）。</li>
+<li><strong>无锁化</strong>：<code>AtomicInteger</code>/<code>LongAdder</code>/<code>AtomicReference</code>；<code>LongAdder</code> 在高竞争计数场景比 <code>AtomicLong</code> 快数倍（Cell 分段，牺牲强一致性读）。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>并发安全手段</th>
+<th>粒度</th>
+<th>吞吐</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>synchronized</td>
+<td>对象级</td>
+<td>中（JDK6 后偏向/轻量/重量级演进）</td>
+<td>简单临界区</td>
+</tr>
+<tr>
+<td>ReentrantLock</td>
+<td>显式</td>
+<td>中</td>
+<td>需超时/中断/多条件</td>
+</tr>
+<tr>
+<td>ReadWriteLock</td>
+<td>读写分离</td>
+<td>读高</td>
+<td>缓存类读多写少</td>
+</tr>
+<tr>
+<td>Atomic/CAS</td>
+<td>变量级</td>
+<td>高</td>
+<td>计数器、状态机</td>
+</tr>
+<tr>
+<td>线程封闭</td>
+<td>无共享</td>
+<td>最高</td>
+<td>ThreadLocal、不可变对象</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="jmmvolatile">模块四：JMM、volatile 与锁机制</h2>
+<h3 id="1_3">1. 核心原理</h3>
+<ul>
+<li><strong>JMM（Java 内存模型）</strong>：定义多线程下共享变量的读写规则。核心手段：<strong>happens-before</strong>（程序顺序、volatile 变量、传递性等规则）+ 可见性/有序性保证；</li>
+<li><strong>volatile 语义</strong>（两条）：① 可见性：volatile 写 happens-before 于后续读（<strong>是 JMM 语义，不是"绕过 CPU 缓存"</strong>）；② 有序性：通过插入<strong>内存屏障</strong>禁止指令重排序；</li>
+<li><strong>四种内存屏障</strong>：LoadLoad（读序）/ StoreStore（写序）/ LoadStore / <strong>StoreLoad（全能屏障，开销最大）</strong>。保守策略：volatile 写前 StoreStore、写后 StoreLoad；volatile 读后 LoadLoad + LoadStore；</li>
+<li><strong>volatile 写-读组合 ≈ 锁的释放-获取语义</strong>：写前的所有普通写对读后的操作可见（<code>flag</code> 状态标志位模式的原理）；</li>
+<li><strong>CAS（Compare And Swap）</strong>：三操作数 V（当前值）/E（预期值）/N（新值），V=E 才原子更新。CPU 原子指令，<code>Unsafe.compareAndSwapInt</code> 实现；<code>AtomicInteger.getAndAddInt</code> = <strong>do-while 自旋重试</strong>（自旋锁机制）。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<ul>
+<li><strong>DCL 单例必须 volatile</strong>：<code>new Singleton()</code> 三步（分配内存→初始化→赋值引用），无 volatile 可能重排为 1→3→2，T2 拿到未初始化对象：</li>
+</ul>
+<pre><code class="language-java">private volatile static Singleton instance;  // 禁止 2/3 重排 + 保证可见
+public static Singleton get() {
+    if (instance == null) {
+        synchronized (Singleton.class) {
+            if (instance == null) instance = new Singleton();
+        }
+    }
+    return instance;
+}
+</code></pre>
+<ul>
+<li><strong>锁选型落地</strong>：简单临界区 <code>synchronized</code>；需超时/中断/多条件 → <code>ReentrantLock</code>；读多写少 → <code>ReentrantReadWriteLock</code>（或 StampedLock）；单变量 → CAS 原子类。</li>
+</ul>
+<h3 id="3_3">3. 踩坑规避</h3>
+<ol>
+<li><strong>volatile 不保证原子性</strong>：<code>inc++</code> 是读-加-写复合操作，5 线程各 500 次结果 &lt; 2500。必须 synchronized/原子类；</li>
+<li><strong>CAS 三大问题</strong>：① <strong>ABA</strong>（A→B→A 误判未修改，用 <code>AtomicStampedReference</code> 加版本号）；② 自旋长时间不成功烧 CPU（<code>pause</code> 指令缓解）；③ 只能保护单个变量（多变量封装 <code>AtomicReference</code> 或加锁）；</li>
+<li><strong>锁膨胀死磕</strong>：<code>synchronized(String)</code> 锁字符串常量池缓存对象——不同业务可能锁到同一字符串，严禁；</li>
+<li><strong>静态/实例 synchronized 混用</strong>：两者锁的是不同对象（Class vs 实例），<strong>不互斥</strong>，以为互斥就会出并发 bug；</li>
+<li><strong>StampedLock 写锁不可重入</strong>：同线程再获取写锁 = 自我死锁；且不支持 Condition、中断不友好（不当使用 CPU 飙升）——用前读官方文档案例。</li>
+</ol>
+<h3 id="4_3">4. 优化进阶</h3>
+<ul>
+<li><strong>synchronized 锁升级（JDK6+）</strong>：无锁 → 偏向锁 → 轻量级锁 → 重量级锁，只升不降。<strong>偏向锁 JDK15 默认关闭、JDK18 彻底废弃</strong>（收益不明显 + 撤销需全局安全点开销大 + JVM 维护复杂）；</li>
+<li><strong>乐观锁 vs 悲观锁选型</strong>：读多写少/低冲突 → CAS 乐观锁（无阻塞无死锁，失败重试）；写多高冲突 → 悲观锁（开销固定，避免重试烧 CPU）。<strong><code>LongAdder</code> 以空间换时间（Cell 分段）解决高冲突下的重试问题</strong>，是计数场景首选；</li>
+<li><strong>锁消除/锁粗化</strong>：JIT 自动优化——逃逸分析发现锁对象不会逃逸则消除锁；相邻同步块合并减少加锁次数。写热点代码避免阻碍这些优化。</li>
+</ul>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>可见性</th>
+<th>原子性</th>
+<th>有序性</th>
+<th>阻塞</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>volatile</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+<td>否</td>
+<td>状态标志、DCL</td>
+</tr>
+<tr>
+<td>synchronized</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>是</td>
+<td>通用临界区</td>
+</tr>
+<tr>
+<td>ReentrantLock</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>可中断/可超时</td>
+<td>需高级功能</td>
+</tr>
+<tr>
+<td>ReentrantReadWriteLock</td>
+<td>✅</td>
+<td>✅（写）</td>
+<td>✅</td>
+<td>读写分离</td>
+<td>读多写少</td>
+</tr>
+<tr>
+<td>StampedLock</td>
+<td>✅</td>
+<td>✅（写）</td>
+<td>✅</td>
+<td>乐观读</td>
+<td>读极多写少（慎用）</td>
+</tr>
+<tr>
+<td>CAS 原子类</td>
+<td>✅</td>
+<td>✅（单变量）</td>
+<td>✅</td>
+<td>否</td>
+<td>计数器/状态机</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="threadpoolexecutor">模块五：线程池工程化（ThreadPoolExecutor 全解）</h2>
+<h3 id="_4">核心原理</h3>
+<p>七参数模型：<code>corePoolSize</code> / <code>maximumPoolSize</code> / <code>keepAliveTime+unit</code> / <code>workQueue</code> / <code>threadFactory</code> / <code>rejectedHandler</code>。执行流程四步：<strong>① 运行线程 &lt; core → 新建核心线程；② ≥ core → 入队；③ 入队失败且 &lt; max → 新建非核心线程；④ ≥ max → 拒绝策略</strong>。预热：<code>prestartCoreThread()</code> / <code>prestartAllCoreThreads()</code>。</p>
+<p>核心线程默认不回收（<code>allowCoreThreadTimeOut=false</code>）；置 true 后按 keepAliveTime 回收。<code>getTask()</code> 中 <code>timed = allowCoreThreadTimeOut || wc &gt; corePoolSize</code>：timed 用 <code>poll(timeout)</code>（超时退出 TERMINATED），否则 <code>take()</code>（WAITING 常驻）。</p>
+<h3 id="_5">生产落地</h3>
+<ul>
+<li><strong>阿里手册强制</strong>：线程资源必须走线程池；<strong>禁止 Executors 工厂</strong>（Fixed/Single 的 LinkedBlockingQueue 默认无界、Cached 的 maximumPoolSize=Integer.MAX_VALUE、Scheduled 的 DelayedWorkQueue 无界 → 均 OOM 风险）；</li>
+<li>必须显式命名线程（<code>ThreadFactoryBuilder.setNameFormat("biz-%d")</code> 或自实现 ThreadFactory），默认 <code>pool-1-thread-n</code> 无法定位问题；</li>
+<li>队列选型：生产用<strong>有界</strong> ArrayBlockingQueue / 自定义有界 LinkedBlockingQueue；</li>
+<li>异常语义差异：<code>execute()</code> 未捕获异常 → 线程终止并替补新线程；<code>submit()</code> 异常封装进 Future，线程复用——<strong>生产优先 submit + Future 统一处理异常</strong>；</li>
+<li>动态调参：<code>setCorePoolSize/setMaximumPoolSize/setKeepAliveTime</code>；队列不可直接改（美团方案：去掉 capacity 的 final）。开源：<strong>Hippo4j</strong>、<strong>Dynamic TP</strong>。</li>
+</ul>
+<h3 id="_6">踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>坑</th>
+<th>后果</th>
+<th>规避</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CallerRunsPolicy + 耗时任务</td>
+<td>任务回退主线程执行，阻塞主线程恶性循环甚至 OOM</td>
+<td>评估调用线程承受力；改任务持久化方案</td>
+</tr>
+<tr>
+<td>无界队列</td>
+<td>任务堆积 OOM</td>
+<td>有界队列 + 合理容量</td>
+</tr>
+<tr>
+<td>核心线程过大</td>
+<td>上下文切换开销（OS 中最耗 CPU 的操作）</td>
+<td>按公式设定</td>
+</tr>
+<tr>
+<td>自定义优先级队列无界</td>
+<td>OOM + 低优先级饥饿</td>
+<td>重写 offer 限长；任务老化提升优先级</td>
+</tr>
+<tr>
+<td>共用 ForkJoinPool.commonPool()</td>
+<td>CompletableFuture 大量任务时线程饥饿</td>
+<td>异步编排必须传自定义线程池</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">优化进阶</h3>
+<ul>
+<li>线程数公式：CPU 密集型 <strong>N+1</strong>（多 1 防偶发缺页中断）；I/O 密集型 <strong>2N</strong>；严谨公式 <strong>N × (1 + WT/ST)</strong>（WT/ST 可用 VisualVM 观测）；</li>
+<li>任务持久化兜底：自定义 RejectedExecutionHandler 把拒绝任务入库 + 混合 BlockingQueue（take 时优先取库中最早任务）——服务器资源极限时不丢任务；</li>
+<li>框架实践参考：Netty NewThreadRunsPolicy（临时线程执行）、ActiveMQ（限时 offer 60s 争取入队）。</li>
+</ul>
+<h3 id="_8">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>拒绝策略</th>
+<th>行为</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AbortPolicy（默认）</td>
+<td>抛 RejectedExecutionException</td>
+<td>关键任务不可静默丢失</td>
+</tr>
+<tr>
+<td>CallerRunsPolicy</td>
+<td>调用线程自己执行（isShutdown 后丢弃）</td>
+<td>可接受反压、尽量不丢</td>
+</tr>
+<tr>
+<td>DiscardPolicy</td>
+<td>直接丢弃</td>
+<td>允许丢失（如日志上报）</td>
+</tr>
+<tr>
+<td>DiscardOldestPolicy</td>
+<td>丢弃最老任务再入队</td>
+<td>喜新厌旧场景</td>
+</tr>
+</tbody>
+</table>
+<h3 id="onethread">附：动态线程池工程化实战（oneThread 案例）</h3>
+<blockquote>
+<p>详细案例见 <a href="../07-business-cases/07.1-projects.html">07.1 项目案例库 · oneThread 模块</a>；此处提炼工程要点。</p>
+</blockquote>
+<p><strong>两类真实事故的根因</strong>（美团同款）：① core/max 设置偏小 → 大量 <code>RejectedExecutionException</code> 触发降级；② <strong>队列过长 → max 参数失效</strong>（队列永不满就永不扩容）→ 任务堆积、执行时间过长、下游超时。<strong>调参不是运维补救，而是框架能力</strong>。</p>
+<p><strong>oneThread 四件套</strong>（配置中心 + 监控 + 告警 + 可视化）：</p>
+<ol>
+<li><strong>动态刷新</strong>：Nacos/Apollo 监听 + 模板方法模式复用刷新逻辑（<code>core-pool-size</code>/<code>maximum-pool-size</code>/<code>queue-capacity</code>/<code>rejected-handler</code> 热更新）；</li>
+<li><strong>可 Resize 队列</strong>：<code>ResizableCapacityLinkedBlockingQueue</code> 突破 JDK 队列容量 final 限制；</li>
+<li><strong>拒绝策略代理</strong>：<code>InvocationHandler</code> 动态代理包装 <code>rejectedExecution</code>，拦截拒绝事件 → <code>AtomicLong</code> 计数 → 钉钉告警；</li>
+<li><strong>监控告警闭环</strong>：队列使用率/活跃线程数超阈值（如 80%）告警 + Prometheus/Grafana 看板 + 优雅关闭（<code>shutdown</code> + 等待 + 兜底执行）避免任务丢失。</li>
+</ol>
+<p><strong>设计模式映射</strong>：模板方法（刷新逻辑复用）、观察者（配置变更监听）、构建者（参数构造）、代理（拒绝策略增强）——框架开发四大件的典型组合。</p>
+<hr />
+<h2 id="threadlocal">模块六：ThreadLocal 与线程上下文传递</h2>
+<h3 id="_9">核心原理</h3>
+<p>值存放在<strong>当前线程的 ThreadLocalMap</strong>（Thread 的成员变量），不在 ThreadLocal 对象上。Entry：<code>key</code> 是 ThreadLocal 的<strong>弱引用</strong>、<code>value</code> 是<strong>强引用</strong>；定位 <code>key.threadLocalHashCode &amp; (len-1)</code>。</p>
+<h3 id="_10">生产落地</h3>
+<pre><code class="language-java">// 阿里手册【强制】：必须回收自定义 ThreadLocal，尤其线程池场景
+private static final ThreadLocal&lt;UserContext&gt; CTX = new ThreadLocal&lt;&gt;();
+
+public void handle(HttpServletRequest req) {
+    try {
+        CTX.set(buildContext(req));   // ① static final 防重复创建实例
+        doBusiness();                 // ② try 内使用
+    } finally {
+        CTX.remove();                 // ③ finally 必清理
+    }
+}
+</code></pre>
+<h3 id="_11">踩坑规避</h3>
+<ul>
+<li><strong>内存泄漏机理</strong>：key 弱引用被 GC 后变 null，value 仍被 Entry 强引用 → stale entry 无法回收；ThreadLocalMap 仅在 get/set/remove 时<strong>被动清理</strong>，不完全可靠。泄漏放大条件：ThreadLocal 实例失去强引用 + 线程长期存活（线程池核心线程）；</li>
+<li><strong>弱引用只是兜底不是免死金牌</strong>：key 若为强引用，忘 remove 就彻底无法回收；弱引用至少给了 GC+自清理的机会；</li>
+<li><strong>数据污染比泄漏更致命</strong>：美团线上事故——线程池复用的线程残留上一个请求的用户上下文，导致用户 A 读到用户 B 的身份信息；</li>
+<li>父子线程传递别用 InheritableThreadLocal：只在<strong>线程创建时</strong>复制一次，线程池复用线程时拿到的是脏数据。</li>
+</ul>
+<h3 id="_12">优化进阶</h3>
+<p><strong>TransmittableThreadLocal（TTL）</strong>：装饰器模式把传递时机从"线程创建时"延迟到"任务提交与执行时"，CRR 三阶段：
+- <strong>Capture</strong>：<code>execute()</code> 瞬间捕获父线程所有活跃 TTL 值存入快照；
+- <strong>Replay</strong>：工作线程 run() 前把快照 set 进去并备份旧值；
+- <strong>Restore</strong>：任务结束后按备份恢复线程，防污染。</p>
+<p>接入：显式包装（<code>TtlRunnable.get()</code> / <code>TtlExecutors.getTtlExecutorService()</code>）或 Java Agent 字节码增强（默认修饰 ThreadPoolExecutor、ScheduledThreadPoolExecutor、ForkJoinTask 体系、TimerTask）。场景：Trace ID 透传、压测流量标记、用户上下文。</p>
+<h3 id="_13">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>传递时机</th>
+<th>线程池支持</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ThreadLocal</td>
+<td>不传递</td>
+<td>—</td>
+<td>泄漏 + 污染（需规范 remove）</td>
+</tr>
+<tr>
+<td>InheritableThreadLocal</td>
+<td>线程创建时一次性复制</td>
+<td>❌</td>
+<td>复用线程脏数据</td>
+</tr>
+<tr>
+<td>TransmittableThreadLocal</td>
+<td>任务提交/执行/结束（CRR）</td>
+<td>✅</td>
+<td>需引入依赖 + 代理开销</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="aqs-juc">模块七：AQS 与 JUC 并发工具</h2>
+<h3 id="_14">核心原理</h3>
+<p>AQS（AbstractQueuedSynchronizer，JDK1.5）为同步器提供通用框架：<code>volatile int state</code> 表示同步状态 + <strong>CLH 变体队列</strong>（双向链表，自旋+阻塞）完成线程排队；子类重写模板方法实现具体获取/释放逻辑。</p>
+<p>CLH 变体的两点优化：① 自旋 → 自旋+阻塞（失败再 <code>LockSupport.park</code>）；② 单向 → 双向（释放时需唤醒后继）。</p>
+<h3 id="_15">生产落地</h3>
+<table>
+<thead>
+<tr>
+<th>同步器</th>
+<th>AQS 模式</th>
+<th>state 语义</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ReentrantLock</td>
+<td>独占</td>
+<td>0 无锁，重入累加，减到 0 才释放</td>
+<td>通用临界区</td>
+</tr>
+<tr>
+<td>Semaphore</td>
+<td>共享</td>
+<td>permits 许可证数，acquire 减 1/release 加 1</td>
+<td>单机限流</td>
+</tr>
+<tr>
+<td>CountDownLatch</td>
+<td>共享</td>
+<td>初始 N，countDown 减 1，归零唤醒 await</td>
+<td>多任务汇总等待</td>
+</tr>
+<tr>
+<td>CyclicBarrier</td>
+<td>ReentrantLock+Condition</td>
+<td>count 到 0 执行 barrierCommand 后重置</td>
+<td>分阶段并行计算</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Semaphore 无所有权约束</strong>：获取与释放线程可不同（区别于锁）；</li>
+<li><strong>CountDownLatch 一次性</strong>；CyclicBarrier 可循环（Generation 机制）；</li>
+<li>CyclicBarrier 中断/超时 → <code>BrokenBarrierException</code> 屏障破损。</li>
+</ul>
+<h3 id="_16">踩坑规避</h3>
+<ul>
+<li>锁<strong>获取几次就要释放几次</strong>，finally 中 unlock 配对（ReentrantLock）；</li>
+<li>Semaphore 公平模式下无参 <code>tryAcquire()</code> 仍可能插队（不遵守公平设置）；</li>
+<li>同步器只是原语，<strong>分布式互斥必须用 Redis/ZooKeeper/etcd</strong>（见 <a href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a> 分布式锁选型）。</li>
+</ul>
+<h3 id="_17">优化进阶</h3>
+<ul>
+<li><code>ReentrantLock</code> 优先非公平模式（减少线程切换，吞吐更高）；需要防饥饿才用公平锁；</li>
+<li>复杂协作优先 <code>CompletableFuture</code> 替代 CountDownLatch（函数式编排 + 异常链处理），注意 <code>whenComplete</code>/<code>exceptionally</code>/<code>handle</code>/<code>allOf</code> 语义差异，且必须传自定义线程池；</li>
+<li>锁竞争激烈场景：缩短临界区、锁粗化/细化的权衡、读写分离（ReentrantReadWriteLock / StampedLock 乐观读）。</li>
+</ul>
+<h3 id="_18">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>首选</th>
+<th>备选</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一段代码等待多任务完成</td>
+<td>CompletableFuture.allOf</td>
+<td>CountDownLatch</td>
+</tr>
+<tr>
+<td>一组线程互等同步点</td>
+<td>CyclicBarrier</td>
+<td>Phaser（多阶段）</td>
+</tr>
+<tr>
+<td>控制并发访问数</td>
+<td>Semaphore</td>
+<td>信号量 + 超时 acquire</td>
+</tr>
+<tr>
+<td>单机互斥</td>
+<td>ReentrantLock</td>
+<td>synchronized</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="synchronized-jit">模块八：Synchronized 锁升级与 JIT 锁优化</h2>
+<h3 id="1_4">1. 核心原理</h3>
+<p><strong>Mark Word 四态</strong>（64 位虚拟机，低 3 位为锁标志）：无锁 <code>001</code>（存 hashCode/GC 年龄）→ 偏向锁 <code>101</code>（存线程 ID）→ 轻量级锁 <code>00</code>（指向栈中 Lock Record 指针）→ 重量级锁 <code>10</code>（指向 Monitor）。</p>
+<p><strong>升级路径（单向不可逆）</strong>：</p>
+<pre><code class="language-text">无锁 ──首次进入同步块──&gt; 偏向锁 ──第二线程竞争──&gt; 轻量级锁 ──CAS 多次失败/自旋超限──&gt; 重量级锁
+        （CAS 写 ThreadID）   （偏向撤销：等安全点→暂停持有线程→升级）  （CAS + 自适应自旋）    （Mutex，BLOCKED）
+</code></pre>
+<p><strong>偏向锁设计前提</strong>：锁大多无竞争且总由同一线程多次获得——同线程重入零原子操作。<strong>JDK 15 已废弃（JEP 374）</strong>：维护成本高、并发集合普及后收益递减、竞争场景撤销开销反噬。</p>
+<p><strong>轻量级锁关键细节</strong>：Mark Word 复制到线程栈 Lock Record（Displaced Mark Word）是为了解锁时恢复对象头——否则 hashCode/GC 年龄丢失，对象状态异常。</p>
+<h3 id="2_4">2. 生产落地</h3>
+<p><strong>JDK 版本选型</strong>：JDK 8/11 生产主流仍走完整四态；JDK 15+ 默认无偏向锁，锁路径退化为"无锁→轻量级→重量级"，代码无需任何改动。</p>
+<p>** synchronized 与 ReentrantLock 的现代结论<strong>：JDK 1.6 锁优化后，synchronized 在多数场景已接近甚至超过 ReentrantLock——</strong>新代码优先 synchronized**（语法简洁、自动解锁、无忘记 unlock 风险）；需要可中断/可超时/公平锁/多条件队列时才用 ReentrantLock。</p>
+<h3 id="3_4">3. 踩坑规避</h3>
+<ul>
+<li><strong>"锁降级"误区</strong>：HotSpot 中锁状态只能升不能降——一旦重量级，释放前保持重量级。Monitor Deflation 只是 STW 期间回收空闲 Monitor 对象，下次加锁重新从偏向/轻量级开始，不是降级；</li>
+<li><strong>DCL 忘写 volatile</strong>：见 <a href="01.7-design-patterns.html">01.7 设计模式 · 模块二</a> 的三步重排分析；</li>
+<li><strong>长临界区里做 IO/远程调用</strong>：轻量级锁自旋等长操作 = CPU 空转，应缩小临界区或改用显式锁；</li>
+<li><strong>锁对象是可更改的</strong>：<code>synchronized(this)</code> 中把 this 的引用发出去被改，等于没锁。</li>
+</ul>
+<h3 id="4-jit">4. 优化进阶（JIT 编译期优化三剑客）</h3>
+<table>
+<thead>
+<tr>
+<th>优化</th>
+<th>触发条件</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>锁消除</td>
+<td>逃逸分析证明锁对象不会逃逸/无多线程访问</td>
+<td>局部 StringBuffer 的 synchronized 直接消除</td>
+</tr>
+<tr>
+<td>锁粗化</td>
+<td>连续反复对同一对象加锁解锁（如循环内同步）</td>
+<td>锁范围扩大到整个序列外，一次加锁</td>
+</tr>
+<tr>
+<td>适应性自旋</td>
+<td>轻量级锁 CAS 失败</td>
+<td>自旋次数按历史成功率动态调整，非固定值</td>
+</tr>
+</tbody>
+</table>
+<p>注意"减小锁粒度"与"锁粗化"不矛盾：前者强调锁内不做无关操作，后者强调同一对象的连续操作合并。</p>
+<h3 id="5_4">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>synchronized</th>
+<th>ReentrantLock</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>语法</td>
+<td>关键字，自动解锁</td>
+<td>API，需 try-finally unlock</td>
+</tr>
+<tr>
+<td>可中断/超时</td>
+<td>❌</td>
+<td>✅ lockInterruptibly/tryLock</td>
+</tr>
+<tr>
+<td>公平锁</td>
+<td>仅非公平</td>
+<td>可选</td>
+</tr>
+<tr>
+<td>多条件队列</td>
+<td>单 wait 集</td>
+<td>多 Condition</td>
+</tr>
+<tr>
+<td>性能（JDK8+）</td>
+<td>基本持平</td>
+<td>持平</td>
+</tr>
+<tr>
+<td>结论</td>
+<td><strong>默认首选</strong></td>
+<td>高级语义场景</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="jdk-21">模块九 · 虚拟线程（JDK 21）</h2>
+<blockquote>
+<p>加工来源：javaup《虚拟线程与现代并发编程》（https://javaup.chat/java/concurrent-multithreading/virtual-threads-deep-dive/）。</p>
+</blockquote>
+<h3 id="1_5">1. 核心原理</h3>
+<p>JDK 21 之前，Java 线程和内核线程是 1:1。创建要系统调用，栈大约 1MB，一切换就进内核，单机数量到几千到几万就顶住。虚拟线程是 M:N：大量虚拟线程堆在少量载体平台线程上，由 JVM 调度。阻塞时卸下载体，不占着操作系统线程干等。</p>
+<h3 id="2_5">2. 生产落地</h3>
+<p>适合一请求一线程、里面全是阻塞 IO（JDBC、HTTP 客户端）的服务。用 <code>Executors.newVirtualThreadPerTaskExecutor()</code> 提交任务，代码保持同步写法。不要在虚拟线程里做长时间 CPU 运算或 <code>synchronized</code> 钉住载体（钉住时这条载体不能去跑别的虚拟线程）。线程池「池化复用」对虚拟线程通常没必要，任务来了再建。</p>
+<h3 id="3_5">3. 踩坑规避</h3>
+<ul>
+<li>把虚拟线程当性能加速器去跑纯计算：计算还是要平台线程和核。</li>
+<li>线程局部变量里放大对象：虚拟线程数量上去后，ThreadLocal 会按数量复制。</li>
+<li>监控仍只看 <code>Thread.activeCount()</code>：平台线程数会很少，积压在虚拟线程上。</li>
+</ul>
+<h3 id="4_4">4. 优化进阶</h3>
+<p>载体数量跟可用处理器走。IO 等待多时，虚拟线程把并发连接数从「线程栈内存」换成「堆上的小栈」，上限改由堆和下游连接池决定。连接池大小仍要按数据库能承受的并发设，不能因为虚拟线程便宜就把池子开到一万。</p>
+<h3 id="5_5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>平台线程池</th>
+<th>虚拟线程</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>1:1</td>
+<td>M:N</td>
+</tr>
+<tr>
+<td>适合</td>
+<td>CPU 密集、要限制并发</td>
+<td>大量阻塞 IO</td>
+</tr>
+<tr>
+<td>池化</td>
+<td>需要</td>
+<td>通常每任务一条</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_19">待补充清单</h2>
+<ul>
+<li>虚拟线程：<strong>已完成</strong>（模块九）</li>
+<li>ReentrantLock / AQS 独占模式的源码级展开仍可加深；公平与非公平的使用差异见模块七</li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

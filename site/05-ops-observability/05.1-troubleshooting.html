@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>05.1 生产运维与线上排查实战</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details open><summary>域5 · 运维与可观测</summary><div class='group'><a class="active" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="051">05.1 生产运维与线上排查实战</h1>
+<blockquote>
+<p><strong>所属知识域</strong>：域5 生产运维与可观测性
+<strong>加工来源</strong>：javaguide《Java 后端线上问题排查》《JDK 监控和故障处理工具总结》（sources/javaguide/java-jvm/jvm-troubleshooting.md、jdk-monitoring-tools.md）</p>
+</blockquote>
+<hr />
+<h2 id="sop">模块一 · 线上问题排查方法论与 SOP</h2>
+<h3 id="1">1. 核心原理</h3>
+<p><strong>反直觉第一原则</strong>：不要被监控最显眼的曲线带着走——CPU 高抓线程栈、Full GC 查堆、发布后回滚都是「现象驱动」。<strong>故障是跨层传导的</strong>：慢 SQL 占连接 → 业务线程阻塞连接池 → 线程池队列堆积 → 上游超时重试 → CPU/延迟/错误率齐升。根因只有一个，先变化的指标才是入口。</p>
+<p><strong>排查三步框架</strong>：</p>
+<pre><code class="language-text">① 确认影响面：用户侧异常？单实例 vs 全服务？排除监控误报/采集延迟/下游传导
+② 止血 vs 留证：故障扩大先按预案止损；留证要抓「时间线」而不是单点快照
+③ 按现象选入口：用 现象→检查项 速查表定位，再沿引用链/耗时对账验证
+</code></pre>
+<p><strong>留证清单</strong>（重启/回滚前）：告警前后监控时间范围、应用/访问/GC 日志、<strong>1~3 份间隔数秒的线程栈</strong>（单份会错过真相）、Trace 慢调用、进程 CPU/RSS/堆/线程数/fd/连接、DB 慢查询/锁等待、Redis 慢命令、MQ 积压。</p>
+<h3 id="2">2. 生产落地</h3>
+<p><strong>提前埋好的防线</strong>（故障后补不开的）：</p>
+<pre><code class="language-bash">-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/path/with/enough/space
+-XX:NativeMemoryTracking=summary     # NMT 必须启动时开，故障后补无效
+-Xlog:gc*:file=gc.log:time,uptime     # JDK9+ 统一 GC 日志
+</code></pre>
+<p><strong>监控口径对齐</strong>：容器环境 <code>top</code>/<code>vmstat</code> 看的是宿主机口径，<code>/sys/fs/cgroup</code> 看容器限额——CPU 高不高先确认观察口径，再看 cgroup 限流是否触发。</p>
+<p><strong>线程栈抓取规范</strong>：<code>top -H</code> 的 tid 是十进制，线程栈 <code>nid</code> 是十六进制，先 <code>printf '%x\n' &lt;tid&gt;</code> 转换再对照；连续抓 3 份间隔 5s，<strong>同一代码位置多次出现才是热点</strong>。</p>
+<h3 id="3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>坑</th>
+<th>后果</th>
+<th>正确做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>带流量实例直接 Heap Dump</td>
+<td>转储阻塞 + 磁盘打满，故障扩大</td>
+<td>先摘流量，或依赖 OOM 自动转储</td>
+</tr>
+<tr>
+<td><code>jmap -dump:live</code> 当无风险命令</td>
+<td>触发 Full GC</td>
+<td>生产慎用，评估堆大小/磁盘/停顿</td>
+</tr>
+<tr>
+<td>CPU 打满时并行多个诊断</td>
+<td>诊断本身抢占资源</td>
+<td>一次一个，选异常实例取证</td>
+</tr>
+<tr>
+<td>线上 <code>KEYS *</code> / 高峰期 <code>--bigkeys</code></td>
+<td>Redis 阻塞</td>
+<td>低峰期/从节点/受控采样</td>
+</tr>
+<tr>
+<td>只抓一份线程栈</td>
+<td>采样巧合误判</td>
+<td>连续多份对照</td>
+</tr>
+<tr>
+<td>重启即「恢复」不留证</td>
+<td>现场丢失，无法复盘</td>
+<td>先留证再重启（除非止损优先）</td>
+</tr>
+<tr>
+<td>测试库验证通过即上线</td>
+<td>执行计划随数据分布变化</td>
+<td>生产参数 + 接近生产数据分布验证</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4">4. 优化进阶</h3>
+<p><strong>耗时对账思想</strong>：一次慢请求的总耗时必须能和各阶段（连接池等待/DNS/TCP/TLS/服务端处理/响应读取）对上——对不上的「空白段」就是监控盲区，补埋点比猜更有价值。Trace 只记业务方法耗时时，连接池等待和线程池排队是两大常见黑洞。</p>
+<p><strong>修复验证标准</strong>：对比故障前/中/后同一组指标（请求量、P95/P99、错误率、业务成功率、CPU、内存、GC、线程池、连接池、依赖延迟）；涉及资金/库存/订单的补数据对账；性能改动要在相近数据量、流量模型、机器配置、缓存状态下比较——<strong>单接口单次压测不代表链路恢复</strong>。</p>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>类型</th>
+<th>用途</th>
+<th>生产注意</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>top</code>/<code>pidstat</code></td>
+<td>命令行</td>
+<td>进程/线程 CPU、I/O</td>
+<td>确认容器 vs 宿主机口径</td>
+</tr>
+<tr>
+<td><code>vmstat</code>/<code>iostat</code></td>
+<td>命令行</td>
+<td>运行队列/内存/磁盘</td>
+<td>结合趋势看</td>
+</tr>
+<tr>
+<td><code>jcmd</code></td>
+<td>命令行</td>
+<td>线程栈/堆信息/JFR/类直方图</td>
+<td>部分命令开销高</td>
+</tr>
+<tr>
+<td><code>jstat</code></td>
+<td>命令行</td>
+<td>GC 与内存区变化</td>
+<td>连续采样</td>
+</tr>
+<tr>
+<td>JFR/JMC</td>
+<td>事件记录</td>
+<td>CPU/分配/锁/I/O 事件</td>
+<td>低开销持续采集，<strong>生产首选</strong></td>
+</tr>
+<tr>
+<td>Arthas</td>
+<td>运行时诊断</td>
+<td>方法耗时/watch/trace</td>
+<td>高流量方法限制范围</td>
+</tr>
+<tr>
+<td>MAT/VisualVM</td>
+<td>离线分析</td>
+<td>Heap Dump</td>
+<td>看引用链与 GC Roots</td>
+</tr>
+<tr>
+<td>Prometheus + Grafana</td>
+<td>指标监控</td>
+<td>全指标时序 + 看板</td>
+<td>采集口径统一</td>
+</tr>
+<tr>
+<td>SkyWalking/Pinpoint</td>
+<td>APM</td>
+<td>链路追踪</td>
+<td>采样率与开销权衡</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="jdk">模块二 · JDK 命令行工具矩阵</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>全称</th>
+<th>一句话用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>jps</code></td>
+<td>JVM Process Status</td>
+<td>列 Java 进程（主类 + LVMID）</td>
+</tr>
+<tr>
+<td><code>jstat</code></td>
+<td>JVM Statistics Monitoring</td>
+<td>类/内存/GC/JIT 运行数据</td>
+</tr>
+<tr>
+<td><code>jinfo</code></td>
+<td>Configuration Info</td>
+<td>查看/动态调整 JVM 参数</td>
+</tr>
+<tr>
+<td><code>jmap</code></td>
+<td>Memory Map</td>
+<td>堆转储 dump</td>
+</tr>
+<tr>
+<td><code>jstack</code></td>
+<td>Stack Trace</td>
+<td>线程快照</td>
+</tr>
+<tr>
+<td><code>jcmd</code></td>
+<td>诊断命令接口</td>
+<td>Thread.print/GC.heap_info/VM.native_memory/JFR（<strong>现代首选，整合多工具</strong>）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>关键细节</strong>：<code>jps -l/-v/-m/-q</code> 分别输出主类全名/JVM 参数/main 参数/仅 LVMID；<code>jstat -gcutil &lt;pid&gt; 1000 10</code> 每秒采样 10 次看 GC；<code>kill -3</code>（SIGQUIT）得的是<strong>线程转储不是堆转储</strong>；<code>jhat</code> 在 JDK9 已移除（JEP 241），堆分析用 MAT/VisualVM。</p>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>jcmd 优先</strong>：<code>jcmd &lt;pid&gt; Thread.print</code>（线程栈）、<code>jcmd &lt;pid&gt; GC.heap_info</code>（堆概况）、<code>jcmd &lt;pid&gt; VM.native_memory summary</code>（本地内存）、<code>jcmd &lt;pid&gt; JFR.start</code>（低开销采集）；</li>
+<li><strong>jinfo 调参边界</strong>：仅「可管理」参数支持运行时修改，改完 <code>VM.flags</code> 确认；</li>
+<li><strong>JMX 远程（JConsole）</strong>：<code>-Dcom.sun.management.jmxremote.port=60001</code>，生产<strong>必须开认证 + SSL + 网络访问控制</strong>（示例中关闭认证的配置仅限隔离测试环境）。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><code>jstat -gcpermcapacity</code> 在 JDK8 后不存在——永久代→元空间，用 <code>-gcmetacapacity</code>；</li>
+<li>GC 日志参数 JDK8 (<code>-XX:+PrintGCDetails</code>) 与 JDK9+ (<code>-Xlog:gc*</code>) 不通用，<code>jinfo -flag PrintGC</code> 对 JDK9+ 无效，用 <code>jcmd VM.log</code>；</li>
+<li>Major GC / Full GC 术语各资料用法不一——读日志结合具体收集器和事件判断，不要拿固定倍数和 Minor GC 比停顿。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<p><strong>工具链组合拳</strong>：JFR 常开低开销采集（分配/锁/IO 事件）→ 告警触发时 <code>jcmd Thread.print</code> 抓现场 → MAT 离线分析 dump → Arthas 对生产问题热诊断（<code>trace</code>/<code>watch</code> 限流）。<strong>命令行的价值是现场还在，可视化工具的价值是看得全</strong>。</p>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>首选</th>
+<th>备选</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>快速看进程/GC</td>
+<td>jps/jstat/jcmd</td>
+<td>JConsole</td>
+</tr>
+<tr>
+<td>线程死锁/停顿</td>
+<td>jcmd Thread.print（多次）</td>
+<td>jstack</td>
+</tr>
+<tr>
+<td>OOM 根因</td>
+<td>MAT 分析 dump</td>
+<td>VisualVM</td>
+</tr>
+<tr>
+<td>持续性能画像</td>
+<td>JFR + JMC</td>
+<td>Arthas trace</td>
+</tr>
+<tr>
+<td>远程监控</td>
+<td>JMX（认证+SSL）</td>
+<td>Prometheus exporter</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_1">待补充清单</h2>
+<ul>
+<li>可观测性三支柱深度 → 已完成，见 <a href="05.2-observability.html">05.2 可观测性三支柱深度</a></li>
+<li>容器与 K8s 运维 → <a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2</a></li>
+<li>SkyWalking 源码 4–10 → <a href="05.2-observability.html">05.2 模块六</a></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

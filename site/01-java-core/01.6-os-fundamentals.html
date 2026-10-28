@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01.6 操作系统基础与进程线程模型</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details open><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="active" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="016">01.6 操作系统基础与进程线程模型</h1>
+<blockquote>
+<p><strong>所属知识域</strong>：域1 Java核心与编码工程化（计算机基础）
+<strong>加工来源</strong>：javaguide/cs-basics/os-questions-01（sources/javaguide/cs-basics/os-questions-01.md）
+<strong>关联文档</strong>：<a href="01.5-network-tcp.html">01.5 计算机网络 · I/O 多路复用</a>（网络系统调用与本篇互为上下文）</p>
+</blockquote>
+<hr />
+<h2 id="_1">模块一 · 用户态/内核态与系统调用</h2>
+<h3 id="1">1. 核心原理</h3>
+<p><strong>用户态/内核态是 CPU 特权级别</strong>，不是进程类型。进入内核态的三类事件：</p>
+<table>
+<thead>
+<tr>
+<th>事件</th>
+<th>触发方式</th>
+<th>同步性</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>系统调用（Trap）</td>
+<td>当前指令主动触发（<code>syscall</code>/<code>ecall</code>）</td>
+<td>同步</td>
+<td><code>read()</code>、<code>send()</code></td>
+</tr>
+<tr>
+<td>硬件中断</td>
+<td>外部硬件触发，与当前指令无关</td>
+<td>异步</td>
+<td>定时器、网卡、磁盘</td>
+</tr>
+<tr>
+<td>同步异常</td>
+<td>当前指令触发</td>
+<td>同步</td>
+<td>除零、Page Fault（可能是可恢复的懒分配/COW）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>系统调用 vs 库函数</strong>：库函数（如 glibc <code>read()</code>）在用户态按 ABI 准备系统调用号和参数，再执行特权指令进入内核——不是一个层次的概念。</p>
+<h3 id="2">2. 生产落地</h3>
+<p><strong>Java 视角的系统调用映射</strong>：文件 IO（<code>FileInputStream</code> → <code>read</code> 系统调用）、网络 IO（<code>Socket</code> → <code>send</code>/<code>recv</code>）、线程阻塞唤醒（<code>park</code> → <code>futex</code>）、内存分配（<code>mmap</code>/<code>brk</code>）。性能剖析（async-profiler/arthas）看到的系统态耗时即内核态时间。</p>
+<p><strong>用户态/内核态切换 ≠ 线程上下文切换</strong>：只有调度器切换到另一个执行实体才是上下文切换。系统调用很快返回时无上下文切换——这是「频繁系统调用开销大」与「线程切换开销更大」的辨析关键。</p>
+<h3 id="3">3. 踩坑规避</h3>
+<ul>
+<li>把 Page Fault 一律当程序错误：<strong>正常场景也会触发</strong>（懒分配、COW、缺页调页），只有内核无法修复时才投递 SIGSEGV；</li>
+<li>误判 load 高 = CPU 忙：load 统计的是 <strong>R（可运行）+ D（不可中断睡眠）</strong> 任务数，D 状态高说明在等块设备/网络存储/Swap，此时 CPU 可能空闲——需结合 <code>vmstat</code> 的 wa/b/<code>pidstat</code> 一起看；</li>
+<li>连接数爆了只看应用层：先查 <code>ulimit -n</code>（进程 fd 上限）与内核内存。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<p><strong>系统调用批量化的本质</strong>：一次系统调用的固定成本（特权切换 + 内核入口/出口 + 权限检查）远高于多带几个参数，所以有 <code>readv/writev</code>（聚合 IO）、<code>io_uring</code>（共享环形缓冲批量提交，Linux 5.1+）等批量接口——与 Redis Pipeline、MySQL 组提交是同一种思想。</p>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>成本量级</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>普通函数调用</td>
+<td>纳秒级</td>
+<td>用户态内部计算</td>
+</tr>
+<tr>
+<td>系统调用</td>
+<td>百纳秒~微秒级</td>
+<td>必须内核服务的 IO/内存/进程操作</td>
+</tr>
+<tr>
+<td>线程上下文切换</td>
+<td>微秒级（同进程）/ 数十微秒（跨进程含 TLB 失效）</td>
+<td>并发调度</td>
+</tr>
+<tr>
+<td>进程创建 fork</td>
+<td>毫秒级</td>
+<td>隔离性要求高的场景（Worker 进程）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块二 · 进程/线程模型与调度</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>进程 = 资源分配与隔离单位</strong>（独立地址空间、文件句柄）；<strong>线程 = CPU 调度执行单位</strong>（共享堆/方法区，私有栈/PC/寄存器）；</li>
+<li><strong>PCB/TCB</strong>：Linux 不严格拆分，统一 <code>task_struct</code>，靠资源结构是否共享区分——<strong>地址空间/文件表是资源边界，栈/寄存器/PC 是执行现场</strong>；</li>
+<li><strong>调度算法谱系</strong>：FCFS（护航效应）→ SJF（饥饿）→ RR（时间片权衡）→ 优先级（饥饿）→ MLFQ（按行为升降级）；Linux 主线 CFS（vruntime 公平）+ Linux 6.6+ EEVDF；</li>
+<li><strong>同步原语</strong>：互斥锁/读写锁/信号量/屏障/条件变量——Java <code>synchronized</code>、<code>ReentrantLock</code>、<code>Semaphore</code>、<code>CyclicBarrier</code>、<code>Condition</code> 分别是 OS 层的封装。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>JVM 线程数规划</strong>：<code>-Xss</code>（默认 1MB）决定单线程栈占用，万级线程仅栈就 GB 级——高并发用线程池 + 异步化（见 <a href="01.3-concurrency.html">01.3 并发 · 线程池模块</a>）；</li>
+<li><strong>CPU 密集型 vs IO 密集型</strong>：线程数 ≈ CPU 核数（前者）/ CPU 核数 × (1 + 等待/计算比)（后者）；</li>
+<li><strong>Java 死锁检测</strong>：<code>jstack -l &lt;pid&gt;</code> 或 <code>ThreadMXBean.findDeadlockedThreads()</code>——对应 OS 层的资源分配图环检测。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><strong>僵尸进程</strong>：父进程不 <code>wait()</code> 回收已退出子进程，内核残留 PCB 占内存——Java 中表现为 <code>Process.waitFor()</code> 未调用；</li>
+<li>多线程一定更快？线程数远超核数后，上下文切换 + 缓存失效 + 锁竞争使吞吐延迟双降；</li>
+<li>跨进程共享状态图省事用共享内存：忘了配信号量/<code>futex</code> 同步就是数据竞争。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<p><strong>线程模型与 GC 的联动</strong>：JVM 并行 GC 线程数、G1 并发标记线程都吃 CPU 配额；容器化环境下 <code>-XX:ActiveProcessorCount</code> 按 cgroup 限额设置，避免按宿主机核数超配。</p>
+<p><strong>上下文切换的缓存视角</strong>：同进程线程切换保留 TLB 与 L1/L2 缓存局部性，跨进程切换几乎全部失效——这就是「线程池优于进程池」的硬件层根因。</p>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>通信/并发方式</th>
+<th>隔离性</th>
+<th>开销</th>
+<th>数据共享</th>
+<th>Java 场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>多进程 + IPC</td>
+<td>强</td>
+<td>高</td>
+<td>需序列化/共享内存</td>
+<td>多 JVM 部署、Worker 隔离</td>
+</tr>
+<tr>
+<td>多线程</td>
+<td>弱（互相影响）</td>
+<td>低</td>
+<td>直接共享堆</td>
+<td><strong>服务内并发默认形态</strong></td>
+</tr>
+<tr>
+<td>协程/虚拟线程</td>
+<td>弱</td>
+<td>极低</td>
+<td>直接共享堆</td>
+<td>JDK 21 虚拟线程高 IO 并发</td>
+</tr>
+<tr>
+<td>事件循环（epoll）</td>
+<td>单线程顺序</td>
+<td>最低</td>
+<td>无竞争</td>
+<td>Redis/Netty/Node 模型</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">模块三 · 内存管理：虚拟内存与分页</h2>
+<blockquote>
+<p>加工来源：小林coding《为什么要有虚拟内存？》（sources/xiaolincoding/os/virtual-memory.md）</p>
+</blockquote>
+<h3 id="1_2">1. 核心原理</h3>
+<p><strong>虚拟内存</strong>：OS 为每进程分配独立虚拟地址空间，进程持虚拟地址经 <strong>MMU</strong> 映射到物理地址——解决多进程地址冲突 + 进程隔离 + 越权保护（页表项权限位）。</p>
+<p><strong>分段 vs 分页</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>分段</th>
+<th>分页</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单位</td>
+<td>逻辑段（代码/数据/栈/堆，长度不固定）</td>
+<td>固定 4KB 页</td>
+</tr>
+<tr>
+<td>碎片</td>
+<td>无内部碎片，<strong>有外部碎片</strong></td>
+<td><strong>无外部碎片</strong>，有内部碎片（不足一页分一页）</td>
+</tr>
+<tr>
+<td>内存交换</td>
+<td>整段写盘，效率低</td>
+<td>按页换出，效率高</td>
+</tr>
+<tr>
+<td>地址结构</td>
+<td>段选择子 + 段内偏移</td>
+<td>页号 + 页内偏移</td>
+</tr>
+</tbody>
+</table>
+<p><strong>缺页异常</strong>：访问的虚拟地址页表中没有 → 内核分配物理页、更新页表、恢复运行（Page Fault 不一定是错误，也可能是可恢复的懒分配/COW，见模块一）。</p>
+<p><strong>多级页表</strong>：32 位 4GB 空间单级页表要 4MB/进程（100 进程 = 400MB）；二级页表靠<strong>局部性原理</strong>按需创建，20% 使用率时仅 0.804MB。64 位用四级：PGD → PUD → PMD → PTE。</p>
+<p><strong>TLB</strong>：CPU 内缓存最常访问页表项的 Cache，先查 TLB 未命中才查页表——用硬件换时间。</p>
+<p><strong>Linux 布局</strong>：主要分页，但 Intel x86 段机制不可避免——Linux 让所有段基地址为 0 覆盖整个 4GB，<strong>段只用于访问控制和内存保护</strong>；虚拟空间分内核区（32 位 1G 高地址 / 64 位 128T）与用户区；用户区从低到高：代码段 → 数据段 → BSS → 堆（向上）→ 文件映射区（向上）→ 栈（固定 8MB），低地址有保留区防 NULL 解引用跑飞。</p>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>JVM 堆外内存踩点</strong>：<code>-XX:MaxDirectMemorySize</code> 之外的 direct memory 走 <code>mmap</code>（文件映射段），不受堆参数控制，泄漏时 Native Memory Tracking（NMT）定位；</li>
+<li><strong>栈容量排查</strong>：线程栈默认 8MB（<code>ulimit -s</code>），<code>-Xss</code> 调小可提升单进程线程数上限，但递归深的方法有 StackOverflowError 风险；</li>
+<li><strong>Swap 策略</strong>：<code>vm.swappiness</code> 生产建议 10（尽量用物理内存，避免 JVM 堆被换出导致 GC 停顿放大）；<code>mlockall</code>（ES 等）锁内存防换出。</li>
+</ul>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ul>
+<li><strong>物理内存够却 OOM（killer）</strong>：容器内 Java 只看 <code>-Xmx</code> 不管容器 cgroup limit——堆外（元空间/线程栈/direct/glibc arena）能顶穿 cgroup，被 Linux OOM Killer 杀进程；</li>
+<li><strong>fork 的 COW 陷阱</strong>：Redis bgsave/AOF 重写 fork 时页表复制 + COW 可能使内存翻倍（见 <a href="../02-backend-components/02.2-redis.html">02.2 大 Key 治理模块</a>）；</li>
+<li><strong>高并发下缺页抖动</strong>：JVM 大对象/新分配页频繁触发 Page Fault，表现为 CPU sys 高——提前预热 + <code>-XX:+AlwaysPreTouch</code>。</li>
+</ul>
+<h3 id="4_2">4. 优化进阶</h3>
+<p><strong>三级存储的成本阶梯</strong>（磁盘比内存慢几万倍）：寄存器（1 周期）→ L1/L2/L3（ns~十 ns）→ 内存（百 ns）→ SSD（μs）→ 磁盘（ms）。虚拟内存的本质是用软件机制把这个阶梯对进程透明化，用局部性原理「假装内存无限大」。</p>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>空间开销</th>
+<th>时间开销</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单级页表</td>
+<td>4MB/进程（32 位）</td>
+<td>1 次访存</td>
+<td>地址空间小的系统</td>
+</tr>
+<tr>
+<td>多级页表</td>
+<td>按需创建（~0.8MB）</td>
+<td>4 次访存（64 位）</td>
+<td><strong>现代 OS 通用</strong></td>
+</tr>
+<tr>
+<td>多级页表 + TLB</td>
+<td>同多级</td>
+<td>TLB 命中 ~1 周期</td>
+<td><strong>生产实际形态</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="inode">模块四 · 文件系统：inode 与目录项</h2>
+<blockquote>
+<p>加工来源：小林《文件系统全家桶》（https://xiaolincoding.com/os/6_file_system/file_system.html）。零拷贝见 <a href="01.5-network-tcp.html">01.5</a>。</p>
+</blockquote>
+<h3 id="1_3">1. 核心原理</h3>
+<p>每个文件两套结构。<strong>inode</strong> 在磁盘上，记大小、权限、时间和数据块位置，是文件的唯一标识。<strong>目录项 dentry</strong> 在内存里，记名字和指向 inode 的关系，用来把路径拼成树。一个 inode 可以对应多个目录项，硬链接就是这样。目录本身也是文件，里面存的是子项，不是文件正文。</p>
+<p>磁盘按 512B 扇区读写太碎，文件系统把扇区组成 4KB 逻辑块。盘上分成超级块、inode 区、数据块区。超级块在挂载时进内存，inode 在文件被访问时进内存。</p>
+<h3 id="2_3">2. 生产落地</h3>
+<p>用户只跟 VFS 打交道：<code>open</code> 拿到 fd，再 <code>read</code>/<code>write</code>/<code>close</code>。Ext4、XFS 是磁盘文件系统；<code>/proc</code>、<code>/sys</code> 是内存里的内核数据；NFS 是远程。应用不关心底下是哪一种。</p>
+<h3 id="3_3">3. 踩坑规避</h3>
+<ul>
+<li>把目录项当成磁盘上的目录文件：dentry 是缓存，掉电不在。</li>
+<li>删掉一个硬链接就以为数据没了：还要看 inode 的链接计数。</li>
+<li>超级块损坏且没有副本：整块文件系统的结构信息会丢。</li>
+</ul>
+<h3 id="4_3">4. 优化进阶</h3>
+<p>重复解析同一路径时走 dentry 缓存，不要每次都从盘上读目录。日志文件系统把元数据变更先记日志，崩溃后按日志重放，避免超级块和 inode 对不上。具体日志格式以所用文件系统为准。</p>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>inode</th>
+<th>dentry</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>存放</td>
+<td>磁盘</td>
+<td>内存</td>
+</tr>
+<tr>
+<td>内容</td>
+<td>元数据和块位置</td>
+<td>名字和父子关系</td>
+</tr>
+<tr>
+<td>关系</td>
+<td>一个文件一个</td>
+<td>一个文件可有多个名字</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">待补充清单</h2>
+<ul>
+<li>虚拟内存与分页、inode/目录项：<strong>已完成</strong></li>
+<li>零拷贝 → <a href="01.5-network-tcp.html">01.5</a></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

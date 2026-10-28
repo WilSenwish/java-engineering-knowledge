@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01.1 Java 基础与语法工程化</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details open><summary>域1 · Java 核心</summary><div class='group'><a class="active" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="011-java">01.1 Java 基础与语法工程化</h1>
+<blockquote>
+<p>知识域：域1 Java核心与编码工程化
+加工来源：sources/javaguide/java-basis/java-basic-questions-01.md
+关联文档：<a href="01.2-collections.html">01.2 集合</a> / <a href="01.4-jvm.html">01.4 JVM</a></p>
+</blockquote>
+<h2 id="java">模块一：Java 语言本质与跨平台机制</h2>
+<h3 id="1">1. 核心原理</h3>
+<ul>
+<li><strong>JDK / JRE / JVM</strong>：JDK = JRE + 开发工具（javac/jstack/arthas 等）；JRE = JVM + 核心类库；JVM 是跨平台的执行载体。</li>
+<li><strong>跨平台原理</strong>：<code>.java</code> → javac 编译为<strong>平台无关的字节码 <code>.class</code></strong> → 各平台 JVM 将字节码翻译为本地机器指令。"一次编译，到处运行"的本质是<strong>字节码规范 + 各平台 JVM 实现</strong>。</li>
+<li><strong>执行方式</strong>：JVM 混合模式 = <strong>解释执行</strong>（启动快）+ <strong>JIT 即时编译</strong>（热点代码编译为本地码，C1 快速编译 / C2 深度优化，分层编译）+ JDK9+ AOT（jaotc，JDK17 后实验性）。</li>
+</ul>
+<h3 id="2">2. 生产落地</h3>
+<ul>
+<li><strong>JDK 版本选型</strong>：生产主力选 <strong>LTS 版本</strong>（当前 17 LTS，跟进 21 LTS）；避免非 LTS 短期版本。项目约束：SpringBoot 2.1.3.RELEASE 兼容 JDK8/11，新模块可评估升级。</li>
+<li><strong>构建期固化 JDK</strong>：Maven <code>maven.compiler.source/target</code> 与 CI 镜像 JDK 保持一致，避免"本地能跑、线上挂"。</li>
+<li><strong>字节码增强的生产用途</strong>：SkyWalking 探针、Arthas 热更新、Mock 工具均基于字节码增强，无需改业务代码即可接入。</li>
+</ul>
+<h3 id="3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UnsupportedClassVersionError</code></td>
+<td>编译 JDK 版本 &gt; 运行 JDK 版本（class 文件版本号不匹配）</td>
+<td>统一构建与运行 JDK；CI 构建镜像锁定版本</td>
+</tr>
+<tr>
+<td>生产日志/接口中文乱码</td>
+<td>JDK8 <code>file.encoding</code> 依赖平台默认编码（Linux 常为 POSIX/ANSI_X3.4-1968）</td>
+<td>JDK17 默认 UTF-8；JDK8 显式 <code>-Dfile.encoding=UTF-8</code>，容器内同步设置 <code>LANG=C.UTF-8</code></td>
+</tr>
+<tr>
+<td>升级 JDK 后行为变化</td>
+<td>小版本间 API/GC 默认值变化（如 JDK9 默认 GC 改 G1）</td>
+<td>升级前跑全量回归 + 压测；阅读 Release Notes 中 Removed/Deprecated 项</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong>JIT 关键优化</strong>：方法内联、逃逸分析（栈上分配）、锁消除；写热点代码时避免方法过大阻碍内联。</li>
+<li><strong>GraalVM Native Image</strong>：启动 ms 级、内存省，适合 CLI/短任务；但<strong>峰值吞吐通常低于 JIT</strong>、反射/动态代理需显式配置，中大型 Spring 应用需充分评估。</li>
+</ul>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>JDK 8</th>
+<th>JDK 11</th>
+<th>JDK 17</th>
+<th>JDK 21</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>支持状态</td>
+<td>商业扩展至 2030</td>
+<td>商业版</td>
+<td>LTS 主力</td>
+<td>最新 LTS</td>
+</tr>
+<tr>
+<td>新特性</td>
+<td>Lambda/Stream</td>
+<td>var、HttpClient、ZGC</td>
+<td>record、sealed、switch 表达式、文本块</td>
+<td>虚拟线程、顺序集合</td>
+</tr>
+<tr>
+<td>生产建议</td>
+<td>存量维护</td>
+<td>过渡</td>
+<td><strong>新建首选</strong></td>
+<td>试点跟进</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_1">模块二：数据类型与包装类</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>8 种基本类型</strong>：byte/short/int/long/float/double/char/boolean；默认值仅字段有（局部变量无）。</li>
+<li><strong>包装类与缓存</strong>：<code>Integer</code> 默认缓存 <strong>[-128, 127]</strong>（<code>IntegerCache</code>，上限可 <code>-XX:AutoBoxCacheMax=</code> 调）；<code>Long</code> 同；<code>Short/Byte/Character</code> 全范围缓存；<code>Boolean</code> 缓存 TRUE/FALSE。</li>
+<li><strong>自动装箱/拆箱</strong>：编译期插入 <code>valueOf()</code>/<code>xxxValue()</code>，是 NPE 与性能问题的常见源头。</li>
+<li><strong>浮点精度</strong>：float/double 是二进制近似，<code>0.1 + 0.2 != 0.3</code>；金额必须用 <code>BigDecimal</code>。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>数据库字段映射</strong>：<code>tinyint→Byte/Integer</code>、<code>bigint→Long</code>、<code>decimal→BigDecimal</code>、时间用 <code>LocalDateTime</code>（JSR-310）而非 <code>Date</code>。</li>
+<li><strong>POJO 规范</strong>（阿里规约）：DO/VO/DTO 等<strong>数据对象一律使用包装类型</strong>（便于 null 区分"未赋值"）；局部计算变量用基本类型。</li>
+<li><strong>BigDecimal 正确用法</strong>：</li>
+</ul>
+<pre><code class="language-java">// 正确：String 构造器 + 明确舍入模式
+BigDecimal price = new BigDecimal(&quot;0.1&quot;);
+BigDecimal total = price.multiply(new BigDecimal(&quot;3&quot;))
+                       .setScale(2, RoundingMode.HALF_UP);
+// 错误：double 构造器会把 0.1 的二进制误差带进来
+// new BigDecimal(0.1) == 0.1000000000000000055511151231257827...
+</code></pre>
+<ul>
+<li><strong>ID 设计</strong>：内部 ID 用 <code>long</code>；对外暴露/跨系统 ID 用 <code>String</code>（防精度丢失，如 JS 大整数问题）。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ol>
+<li><strong><code>Integer ==</code> 陷阱</strong>：缓存范围内相等，范围外比较引用。<code>Integer a = 200, b = 200; a == b</code> 为 false。<strong>一律用 <code>equals</code></strong>。</li>
+<li><strong>包装类 NPE</strong>：<code>Integer x = null; int y = x;</code> 触发拆箱 NPE。三目运算符两侧类型不一致也会触发隐式拆箱（<code>map.get(k) == null ? 0 : map.get(k)</code> 也可能拆箱）。</li>
+<li><strong>整数溢出</strong>：<code>long</code> 时间戳毫秒可支撑到公元 29227 年，但<strong>雪花算法 41 位时间戳约 69 年耗尽</strong>（需规划回用/重置策略）；<code>Integer.MAX_VALUE</code> 计数在千万级流量业务会溢出，用 <code>LongAdder</code>。</li>
+<li><strong>float 比较</strong>：循环累加 float 会漂移；相等比较用 <code>BigDecimal.compareTo</code> 或误差阈值。</li>
+</ol>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>基本类型 vs 包装类</strong>：数组/集合大数据量场景优先基本类型数组（<code>int[]</code> vs <code>Integer[]</code> 内存差 4~5 倍，缓存友好）；Java 无原语泛型，可用 fastutil/Eclipse Collections 或 flattened 结构。</li>
+<li><strong><code>String.intern</code></strong>：JDK7+ 常量池移入堆，大量 intern 相同字符串可省内存，但字符串池是固定大小的 HashTable（JDK7 可 <code>-XX:StringTableSize</code> 调），滥用会拖慢。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>计数/索引/时间戳</td>
+<td><code>int</code> / <code>long</code></td>
+<td>基本类型，无装箱开销</td>
+</tr>
+<tr>
+<td>实体字段/接口出入参</td>
+<td>包装类型</td>
+<td>支持 null 语义，框架反射友好</td>
+</tr>
+<tr>
+<td>金额/费率/比例</td>
+<td><code>BigDecimal</code></td>
+<td>精确十进制</td>
+</tr>
+<tr>
+<td>跨端 ID</td>
+<td><code>String</code></td>
+<td>避免 JS/JSON 精度丢失</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块三：面向对象与多态</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>三大特性</strong>：封装（隐藏内部状态，暴露契约）、继承（复用 + is-a）、多态（运行期绑定，<code>override</code> 是实现多态的前提）。</li>
+<li><strong>抽象类 vs 接口</strong>：JDK8 起接口可有 <code>default</code>/<code>static</code> 方法；抽象类可有构造器、字段、非 public 成员。<strong>接口定义能力契约，抽象类封装共性实现</strong>。</li>
+<li><strong>重载（Overload）vs 重写（Override）</strong>：重载是编译期决定（同名不同参），重写是运行期动态绑定（子类实现父类方法）。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>分层数据对象命名</strong>：DO（数据库映射）/ DTO（跨层传输）/ VO（视图展示）/ BO（业务聚合），用 Lombok <code>@Data</code>/<code>@Builder</code>，禁止手写 get/set。</li>
+<li><strong>SPI 思想</strong>：核心模块定义接口（如 <code>PayChannel</code>），实现方按约定注册，主流程面向接口编程（Spring 的 <code>FactoryBean</code>/JDK <code>ServiceLoader</code> 均基于此）。</li>
+</ul>
+<pre><code class="language-java">// 面向接口 + Lombok + ApiResponse 统一封装的 Controller 示例
+@RestController
+@RequestMapping(&quot;/api/v1/users&quot;)
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;UserVO&gt; get(@PathVariable Long id) {
+        return ApiResponse.ok(userService.getById(id));
+    }
+}
+</code></pre>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ol>
+<li><strong>重写三约束破坏</strong>：返回值协变（或相同）、访问修饰符不能收紧、受检异常范围不能扩大。违反编译期即报错，但<strong>抛出的异常范围写更宽</strong>这类隐性破坏需 review 卡住。</li>
+<li><strong>静态方法"重写"无效</strong>：静态方法是隐藏（hide），通过父类引用调用执行父类版本——多态场景误用静态方法是经典 bug。</li>
+<li><strong>构造器中调用可重写方法</strong>：子类重写的方法在子类构造器执行前被调用，字段尚未初始化，拿到默认值（JDK 建议：构造器中只调 final/private 方法）。</li>
+<li><strong><code>equals</code>/<code>hashCode</code> 契约</strong>：<code>hashCode</code> 相等的对象 <code>equals</code> 不一定 true；<code>equals</code> true 则 <code>hashCode</code> 必须相等。用 IDE 生成或 Lombok <code>@EqualsAndHashCode</code>，重写 <code>equals</code> 必须同时重写 <code>hashCode</code>。</li>
+</ol>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>final 优化</strong>：final 类/方法使 JIT 去虚拟化（直接内联目标，省去查虚表）；热点小类可考虑 final。</li>
+<li><strong>组合优于继承</strong>：继承破坏封装（父类实现变化影响子类）；策略模式用组合 + 接口替代继承体系。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>适用</th>
+<th>不适用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>接口</td>
+<td>定义契约、多实现、回调</td>
+<td>共享代码（default 方法仅适合少量）</td>
+</tr>
+<tr>
+<td>抽象类</td>
+<td>模板方法模式、共性状态</td>
+<td>跨继承体系复用</td>
+</tr>
+<tr>
+<td>继承</td>
+<td>真正的 is-a 且层级稳定</td>
+<td>需求多变的业务模型</td>
+</tr>
+<tr>
+<td>组合</td>
+<td>默认首选</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">待补充清单</h2>
+<ul>
+<li>虚拟线程 → <a href="01.3-concurrency.html">01.3 模块九</a></li>
+<li>设计模式 → <a href="01.7-design-patterns.html">01.7</a></li>
+<li>record / sealed 的专篇仍无已抓取原文，不在此臆造</li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

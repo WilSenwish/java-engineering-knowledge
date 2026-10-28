@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>07.1 实战项目案例库</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details open><summary>域7 · 实战案例</summary><div class='group'><a class="active" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="071">07.1 实战项目案例库</h1>
+<blockquote>
+<p>知识域：域7 业务场景与实战案例
+加工来源：sources/nageoffer/_index.md（5 大生产级项目）+ GitHub 源码级走读（nageoffer/ragent）
+关联文档：<a href="../03-distributed/03.2-microservices.html">03.2 微服务架构</a> / <a href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿</a> / <a href="../01-java-core/01.3-concurrency.html">01.3 并发编程</a></p>
+</blockquote>
+<h2 id="_1">模块一：项目全景与学习路径</h2>
+<h3 id="1">1. 核心原理（项目矩阵）</h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>类型</th>
+<th>开源</th>
+<th>并发量级</th>
+<th>核心考点</th>
+<th>适合人群</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ragent AI</strong></td>
+<td>Agentic RAG</td>
+<td>✅</td>
+<td>—</td>
+<td>多路召回/RRF/Rerank、模型容错、MCP 工具、流量保护、Trace</td>
+<td>AI 应用开发岗</td>
+</tr>
+<tr>
+<td><strong>oneThread</strong></td>
+<td>中间件（线程池）</td>
+<td>❌</td>
+<td>—</td>
+<td>动态参数、可观测、拒绝策略增强、配置中心热更</td>
+<td>基础架构/中间件岗</td>
+</tr>
+<tr>
+<td><strong>oneCoupon 牛券</strong></td>
+<td>业务系统</td>
+<td>❌</td>
+<td>~10万 QPS</td>
+<td>秒杀、分发、防重、分库分表、缓存三兄弟</td>
+<td>高并发业务岗</td>
+</tr>
+<tr>
+<td><strong>12306</strong></td>
+<td>业务系统</td>
+<td>✅ 1.5w⭐</td>
+<td>高并发</td>
+<td>座位分配、分段扣减、分库分表、读扩散</td>
+<td>分布式系统岗</td>
+</tr>
+<tr>
+<td><strong>Link 短链</strong></td>
+<td>SaaS 系统</td>
+<td>✅</td>
+<td>12k TPS / 56k QPS</td>
+<td>海量存储、冷热分层、多租户、风控</td>
+<td>SaaS/架构岗</td>
+</tr>
+</tbody>
+</table>
+<h3 id="2">2. 生产落地（学习路径建议）</h3>
+<ol>
+<li><strong>第一阶段（基础巩固）</strong>：oneThread → 掌握线程池工程化 + 可观测，直接反哺日常工作；</li>
+<li><strong>第二阶段（高并发业务）</strong>：牛券 / 12306 → 缓存、秒杀、分库分表、防重完整链路；</li>
+<li><strong>第三阶段（SaaS 架构）</strong>：Link → 多租户隔离 + 海量存储 + 压测标定；</li>
+<li><strong>第四阶段（AI 工程）</strong>：Ragent → RAG/Agent 全链路，Java 开发者转 AI 应用的最佳跳板。</li>
+</ol>
+<h3 id="3">3. 踩坑规避（通用）</h3>
+<ul>
+<li><strong>Demo 玩具化</strong>：只调 API 不算做过 RAG/Agent/秒杀——面试追问永远在：数据一致性、异常路径、压测数据、故障演练；</li>
+<li><strong>技术堆砌无主线</strong>：项目叙事按"问题 → 方案权衡 → 数据验证"组织，不按技术清单罗列；</li>
+<li><strong>忽视工程化</strong>：上线 Checklist、回滚、监控是项目完整度的重要组成。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong>二刷策略</strong>：第一遍跟做功能；第二遍专攻"生产级改造"（加监控/压测/容错/文档）；</li>
+<li><strong>简历映射</strong>：每个项目提炼 3 个可量化成果（QPS、P99、成本降幅）+ 2 个深度技术决策。</li>
+</ul>
+<h3 id="5">5. 选型对比（项目参考价值）</h3>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>首选项目</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>面试讲高并发</td>
+<td>牛券（10万 QPS 有数据）</td>
+<td>压测数据完整</td>
+</tr>
+<tr>
+<td>面试讲分布式设计</td>
+<td>12306（业务误区有深度）</td>
+<td>购票模型真实复杂</td>
+</tr>
+<tr>
+<td>面试讲中间件</td>
+<td>oneThread（作者 Hippo4j 3.8k⭐）</td>
+<td>中间件设计范式</td>
+</tr>
+<tr>
+<td>面试讲 AI</td>
+<td>Ragent（开源可讲源码）</td>
+<td>Java + Agentic RAG 稀缺</td>
+</tr>
+<tr>
+<td>面试讲 SaaS 架构</td>
+<td>Link（多租户 + 海量存储）</td>
+<td>SaaS 工程全覆盖</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ragent-ai-agentic-rag">模块二：Ragent AI — 企业级 Agentic RAG 深度案例</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>定位</strong>：从 0 到 1 纯手工打造企业级 Agentic RAG，拒绝 Demo 玩具。开源：<code>github.com/nageoffer/ragent</code>。</li>
+<li><strong>v1 vs v2 双架构（核心设计决策）</strong>：</li>
+<li><strong>v1 Workflow 编排</strong>：路径写死（检索→重排→生成），更快、更可控、成本低 → 问答类场景；</li>
+<li><strong>v2 Agentic 架构</strong>：ReAct 循环，路径由模型自主决定，可规划、可调用工具 → 复杂任务场景；</li>
+<li><strong>两套并存按场景路由</strong>，是"可控性与智能性权衡"的教科书实践。</li>
+<li><strong>七模块架构</strong>：<code>infra-ai</code>（模型客户端/档位/路由/首包探测/降级）、<code>system</code>（认证审计）、<code>rag</code>（问答/知识库/入库 Pipeline/意图树/检索/会话）、<code>agent</code>（AgentScope ReAct 引擎 + MCP 工具 + 技能 + 记忆 + 人工确认）、<code>bootstrap</code>、<code>framework</code>（统一响应/幂等/分布式 ID/MQ/SSE/跨节点流式取消）、<code>mcp-server</code>。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>混合检索链路</strong>：向量 + 关键词 + 知识图谱 + 联网搜索<strong>并行召回</strong> → 去重 → <strong>RRF 融合</strong> → <strong>Rerank</strong> 精排；按召回数/Rerank/TopK 分层控制，<strong>单通道失败不影响主链</strong>。</li>
+<li><strong>问题理解层</strong>：查询词映射（同义词/领域词典）→ 问题重写与拆分（多问题拆分）→ <strong>树形意图识别</strong>（注册表模式）→ 多知识库路由。</li>
+<li><strong>流量保护（Redis）</strong>：ZSET 公平排队 + Lua 原子抢占 + 过期信号量 + Pub/Sub 唤醒——模型调用是昂贵资源，必须限并发。</li>
+<li><strong>模型容错</strong>：多候选模型自动切换；首包超时/空响应/异常三级触发降级；<strong>三态熔断</strong>。</li>
+<li><strong>可观测</strong>：Trace Run/Node 级耗时与输入输出；<strong>Langfuse</strong> 追踪推理、工具调用、Token 消耗。</li>
+<li><strong>流式体验</strong>：SSE 分事件输出（思考/正文/来源/推荐问题），全局超时 + 客户端断开取消（跨节点）。</li>
+<li><strong>数据一致性</strong>：RocketMQ 事务消息保障分块可靠执行 + 幂等；远程刷新 = 分布式锁 + 状态机。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ol>
+<li><strong>检索单点故障拖垮主链</strong> → 多通道并行 + 单通道隔离降级；</li>
+<li><strong>模型首包慢导致用户体验差</strong> → 首包探测 + 超时切换候选模型；</li>
+<li><strong>流式输出跨节点无法取消</strong> → 框架层统一管理 SSE 生命周期（Pub/Sub 广播取消信号）；</li>
+<li><strong>知识库更新期间的脏读</strong> → 远程刷新加分布式锁 + 状态机（刷新中/完成/失败）；</li>
+<li><strong>会话 Token 成本失控</strong> → 最近 N 轮 + 持久化摘要 + 上下文压缩。</li>
+</ol>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>设计模式实战地图</strong>（每个模式对应具体问题，面试可展开）：
+  策略（检索通道/结果后处理）、工厂（意图树/分块策略）、模板方法（并行检索/模型请求）、注册表（意图节点）、装饰器（向量写入同步关键词和图谱索引）、责任链（检索后处理/模型故障降级）、中间件（Agent 记忆注入/上下文压缩）、适配器（多模型方言/MQ 客户端）、状态机（远程文档定时刷新）、事件回调（SSE）、AOP（Trace/幂等/审计）。</li>
+<li><strong>四大常见误区（面试考点）</strong>：① 调 API ≠ 会 RAG/Agent；② RAG ≠ 检索+生成（每环都有坑）；③ 接框架/MCP ≠ 企业级（增量更新/多租户/风控/可观测）；④ 只关注模型忽略工程（检索策略/分块/上下文管理决定效果）。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>v1 Workflow</th>
+<th>v2 Agentic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>路径</td>
+<td>人写死</td>
+<td>模型自主</td>
+</tr>
+<tr>
+<td>延迟/成本</td>
+<td>低</td>
+<td>高（多轮推理）</td>
+</tr>
+<tr>
+<td>可控性</td>
+<td>高</td>
+<td>中</td>
+</tr>
+<tr>
+<td>能力上限</td>
+<td>中</td>
+<td>高（可规划/用工具）</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>标准问答</td>
+<td>复杂任务</td>
+</tr>
+<tr>
+<td><strong>生产结论</strong></td>
+<td><strong>按场景路由，二者并存</strong></td>
+<td>同左</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="onethread">模块三：oneThread — 动态可观测线程池框架</h2>
+<blockquote>
+<p>加工来源：nageoffer《oneThread动态线程池》（sources/nageoffer/onethread.md）。星球专属不开源，公开介绍页含架构与配置全貌。</p>
+</blockquote>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>定位</strong>：基于配置中心的动态可观测 Java 线程池框架；作者前作 Hippo4j（3.8k+ Star）。技术栈：Spring Boot + JUC + Nacos/Apollo + Prometheus/Grafana；纯 Java 代码 4.99k 行。</li>
+<li><strong>解决的两大生产痛点</strong>（美团 2020 经典问题）：
+  1. <strong>任务执行拒绝</strong>：核心数设置偏小 → 大量 <code>RejectedExecutionException</code> 触发降级；
+  2. <strong>任务执行时间过长</strong>：队列过长 → 最大线程数失效 → 任务堆积 → 下游超时。</li>
+<li><strong>根因</strong>：JDK 线程池参数<strong>运行期不可调</strong>，只能重启；缺乏监控，问题暴露时已酿成故障。</li>
+<li><strong>项目结构</strong>（「核心 + 接入 + 展示」三层）：<code>core</code>（动态线程池内核）/ <code>starter</code>（Nacos、Apollo、Tomcat 适配、dashboard 可插拔组件）/ <code>spring-base</code>（扫描/开关/Banner）/ <code>example</code> / <code>dashboard-dev</code>（可视化控制台：线程池列表、参数编辑、Grafana 监控页）。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<pre><code class="language-yaml">onethread:
+  executors:
+    - thread-pool-id: onethread-producer
+      core-pool-size: 12
+      maximum-pool-size: 18
+      queue-capacity: 2000
+      work-queue: ResizableCapacityLinkedBlockingQueue
+      rejected-handler: CallerRunsPolicy
+      keep-alive-time: 60
+      allow-core-thread-time-out: false
+      alarm:
+        enable: true
+        queue-threshold: 80      # 队列使用率超 80% 告警
+        active-threshold: 80     # 活跃线程占比超 80% 告警
+</code></pre>
+<ul>
+<li><strong>动态参数刷新</strong>：模板方法模式复用刷新逻辑；统一注册处理 Nacos/Apollo 多种配置中心监听事件 → 参数热更新<strong>无需重启</strong>。</li>
+<li><strong>拒绝策略增强</strong>：基于 JDK <code>InvocationHandler</code> 动态代理拦截拒绝任务事件并告警（拒绝 = 故障前兆，必须可见）。</li>
+<li><strong>监控告警</strong>：Prometheus + Grafana 采集可视化 + 钉钉通知；队列深度/活跃线程/拒绝次数阈值告警。</li>
+<li><strong>工程结构</strong>：core（内核）+ starter（Nacos/Apollo/dashboard 可插拔）+ spring-base（扫描/开关）+ example + dashboard-dev（可视化控制台）。</li>
+</ul>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ol>
+<li><strong>动态改 corePoolSize 的线程安全</strong>：JDK 原生 <code>setCorePoolSize</code> 有并发边界问题，框架内部需同步处理（先减后加/加锁）；</li>
+<li><strong>队列容量动态伸缩</strong>：<code>ResizableCapacityLinkedBlockingQueue</code> 改容量需保证 <code>remainingCapacity</code> 一致性；</li>
+<li><strong>优雅关闭</strong>：关闭时拒新 + 排空存量 + 超时强退，避免任务丢失（<code>shutdown</code> + <code>awaitTermination</code> + <code>shutdownNow</code> 兜底）；</li>
+<li><strong>告警风暴</strong>：阈值加持续时间窗口（持续 N 秒超限才告警）。</li>
+</ol>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>参数标定方法论</strong>：压测找到"队列深度 × 处理时长 × 消费速率"的临界点 → 告警阈值设在临界点 70~80%；</li>
+<li><strong>从监控到自愈</strong>：告警 → 自动化扩容（K8s HPA / 动态调大 maximumPoolSize）→ 人工复盘，形成闭环。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>动态调参</th>
+<th>监控告警</th>
+<th>侵入性</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JDK 原生</td>
+<td>❌ 需重启</td>
+<td>❌</td>
+<td>零</td>
+<td>参数稳定的内部任务</td>
+</tr>
+<tr>
+<td><strong>oneThread/Hippo4j</strong></td>
+<td>✅ 热更</td>
+<td>✅</td>
+<td>低（starter）</td>
+<td><strong>生产业务线程池</strong></td>
+</tr>
+<tr>
+<td>Spring <code>ThreadPoolTaskExecutor</code></td>
+<td>部分（Bean 重建）</td>
+<td>弱</td>
+<td>低</td>
+<td>简单异步任务</td>
+</tr>
+<tr>
+<td>虚拟线程（JDK21）</td>
+<td>不需要（按需创建）</td>
+<td>需新工具</td>
+<td>中</td>
+<td>高并发 IO 型（新范式）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12306-link">模块四：高并发业务系统案例（牛券 / 12306 / Link）</h2>
+<blockquote>
+<p>本模块为三项目横向概览；逐项目五段式深挖见<strong>模块五（牛券）/ 模块六（12306）/ 模块七（Link）</strong>。</p>
+</blockquote>
+<h3 id="1_3">1. 核心原理</h3>
+<ul>
+<li><strong>牛券（~10万 QPS）</strong>：兑换/秒杀优惠券两套模式 + 批量分发（平台推送/Excel 导入）+ 模板创建（责任链）+ 防重复提交（AOP 注解 → Starter 化）。</li>
+<li><strong>12306（1.5w⭐）</strong>：购票领域模型是精髓——<strong>座位分配算法</strong>（查余票 → 遍历有余票车厢 → 优先相邻 → 次选同车厢不相邻 → 最后跨车厢）；<strong>区间分段扣减</strong>（北京南→南京南实际扣减"北京南-济南西、北京南-南京南、济南西-南京南"三段，任一不足即失败）。</li>
+<li><strong>Link 短链（12k TPS 创建 / 56k QPS 跳转）</strong>：唯一短码生成（哈希/Base62/雪花 + 碰撞校验）→ 映射持久化（Redis + MySQL）→ 301/302 重定向 → 埋点统计。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<ul>
+<li><strong>牛券防重三层</strong>：Web 端（Token 防重复提交）+ 服务端（分布式锁 Redisson）+ MQ 消费（去重表/唯一索引）；<strong>同一套逻辑抽象为 SpringBoot Starter，AOP + 注解复用</strong>。</li>
+<li><strong>牛券缓存策略</strong>：缓存击穿（互斥锁重建/逻辑过期）+ 穿透（布隆过滤器 + 空值缓存）+ 雪崩（随机 TTL + 多级缓存）；Redis 内存淘汰策略按业务选型（<code>allkeys-lru</code> vs <code>volatile-lru</code>）。</li>
+<li><strong>12306 读扩散治理</strong>：用户名/手机号/邮箱多方式登录无法确定分片键 → 登录维度的<strong>映射表分片</strong> + 读请求扩散到多库聚合；大规模数据分库分表（分片键选择 + 平滑上线 + 快速回滚）。</li>
+<li><strong>12306 车次查询误区（经典面试题）</strong>：直觉上 ES，实际上海量并发下 <strong>ES 并发能力与资源占用不适用</strong> → 查询条件经 Redis 缓存 + 内存组装。</li>
+<li><strong>Link 海量存储</strong>：冷热分层（热短码 Redis / 温 MySQL / 冷对象存储）+ 分库分表 + 布隆过滤器防无效查询穿透。</li>
+<li><strong>Link 压测（阿里云 PTS）</strong>：创建 12k TPS、跳转 56k QPS——<strong>压测数据是项目可信度的核心证据</strong>。</li>
+</ul>
+<h3 id="3_3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>坑</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>牛券</td>
+<td>百万行 Excel 解析 OOM</td>
+<td>EasyExcel 流式读（SAX 模式）；两个主流框架 100w 行性能对比选型</td>
+</tr>
+<tr>
+<td>牛券</td>
+<td>秒杀超卖</td>
+<td>扣减原子性（Redis Lua / DB 乐观锁）+ 对账补偿</td>
+</tr>
+<tr>
+<td>12306</td>
+<td>恶意刷中间站票</td>
+<td>站间配额规则 + 动态放票（大站期初多放、临近发车开放小站）</td>
+</tr>
+<tr>
+<td>12306</td>
+<td>缓存穿透（Null 缓存有漏洞：短暂脏数据；布隆有误判）</td>
+<td>二者组合 + 布隆误判兜底走 DB 校验</td>
+</tr>
+<tr>
+<td>Link</td>
+<td>短码碰撞</td>
+<td>生成后碰撞校验 + 重试；唯一索引兜底</td>
+</tr>
+<tr>
+<td>Link</td>
+<td>多租户数据串权</td>
+<td>租户 ID 强制注入查询条件（MyBatis 拦截器/行级策略）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_3">4. 优化进阶</h3>
+<ul>
+<li><strong>秒杀两模式对比</strong>（牛券核心考点）：兑换（先到先得，纯原子扣减，无时间窗）vs 秒杀（时间窗 + 库存预热 + 令牌桶限流 + 异步下单）——适用场景与一致性要求不同。</li>
+<li><strong>预约提醒架构</strong>：百万预约 → 分库分表 + XXL-Job 分片扫描 + RocketMQ 5.x 延时消息（比定时轮询更省资源）。</li>
+<li><strong>Link 风控</strong>：频控（单租户 QPS）、防刷（IP+设备指纹）、黑白名单、二维码海报（品牌化）。</li>
+</ul>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>方案</th>
+<th>牛券/12306/Link 实践</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>高并发扣减</td>
+<td>Redis Lua vs DB 乐观锁</td>
+<td>Redis 主扣 + DB 异步对账</td>
+</tr>
+<tr>
+<td>海量查询</td>
+<td>ES vs Redis 组装</td>
+<td><strong>Redis 组装（ES 并发不适配）</strong></td>
+</tr>
+<tr>
+<td>防重</td>
+<td>分布式锁 vs 唯一索引</td>
+<td>锁挡并发 + 唯一索引兜底</td>
+</tr>
+<tr>
+<td>定时任务</td>
+<td>轮询 vs 延时消息</td>
+<td>RocketMQ 延时消息优先</td>
+</tr>
+<tr>
+<td>分库分表</td>
+<td>ShardingSphere</td>
+<td>分片键 = 用户/租户维度</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="onecoupon-qps">模块五：牛券 oneCoupon — 十万 QPS 优惠券系统深挖</h2>
+<blockquote>
+<p>加工来源：sources/nageoffer/onecoupon.md（官方介绍页含 34 小节完整课程结构）。星球专属不开源，公开信息含课程地图与七大亮点全貌。</p>
+</blockquote>
+<h3 id="1_4">1. 核心原理</h3>
+<ul>
+<li><strong>定位</strong>：高性能优惠券系统，<strong>能够承受近十万次查询和分发请求的高并发压力</strong>。牛券项目<strong>不再实行开源策略</strong>（仅星球可学）——"面试用牛券项目的同学会少很多"，这本身就是差异化亮点。</li>
+<li><strong>业务模型</strong>：券归属（平台券/店铺券）× 券类型（折扣券/满减券/立减券）+ 领取使用限制规则。</li>
+<li><strong>技术栈</strong>：JDK 17 + Spring Boot 3 + Maven 多 Modules；SpringCloudAlibaba/Nacos（可选开关）、Sentinel、Skywalking、RocketMQ 5.x、ElasticSearch、Redis、MySQL 5.7.x、EasyExcel、XXL-Job、Redisson、ShardingSphere。</li>
+<li><strong>「最小必要技术」学习设计（项目作者的刻意安排）</strong>：强依赖只有 <strong>Redis + RocketMQ</strong>，其他框架"知道是做什么、会使用 API 即可"，不需要深入原理。<strong>SpringCloud 做成了可选开关</strong>——不想学默认关闭（如 Nacos），想学改开关加入。这是"降低项目上手门槛同时保留架构完整性"的工程示范。</li>
+<li><strong>分支学习工程学</strong>：<code>main</code> 完整代码 + <strong>从零到一分支</strong>（按课程目录组织），"跟着写代码能够做到绝对的循序渐进"。</li>
+</ul>
+<h3 id="2-34">2. 生产落地（34 小节课程地图）</h3>
+<table>
+<thead>
+<tr>
+<th>服务</th>
+<th>小节</th>
+<th>核心技术点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>后台管理</td>
+<td>06</td>
+<td><strong>责任链模式</strong>创建优惠券模板</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>07</td>
+<td><strong>ShardingSphere</strong> 分库分表（分表 + 分库逻辑）</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>08</td>
+<td>日志组件优雅记录操作日志</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>09</td>
+<td><strong>注解 + 分布式锁防重复提交</strong></td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>11</td>
+<td><strong>RocketMQ 5.x 延时消息</strong>修改优惠券结束状态</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>12</td>
+<td><strong>EasyExcel 解析百万 Excel</strong> 创建批量分发任务</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>13</td>
+<td>线程池 + 延时队列<strong>优化推送任务创建响应时间</strong></td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>14</td>
+<td><strong>模板方法模式</strong>开发消息队列发送</td>
+</tr>
+<tr>
+<td>后台管理</td>
+<td>15</td>
+<td>XXL-Job 定时任务执行推送任务</td>
+</tr>
+<tr>
+<td>分发&amp;引擎</td>
+<td>15-17</td>
+<td>缓存击穿 / 穿透 / <strong>Redis 内存淘汰策略选型</strong></td>
+</tr>
+<tr>
+<td>分发&amp;引擎</td>
+<td>18-20</td>
+<td>优惠券分发（一/二）+ <strong>策略模式</strong>执行消息发送</td>
+</tr>
+<tr>
+<td>分发&amp;引擎</td>
+<td>21</td>
+<td><strong>去重表 + 注解</strong>防止 MQ 重复消费</td>
+</tr>
+<tr>
+<td>分发&amp;引擎</td>
+<td>22-24</td>
+<td>兑换/秒杀（两套模式）+ 锁定/核销/退还</td>
+</tr>
+<tr>
+<td>分发&amp;引擎</td>
+<td>25-27</td>
+<td><strong>百万预约</strong> + 预约提醒推送 + 查询/取消</td>
+</tr>
+<tr>
+<td>结算</td>
+<td>28-29</td>
+<td>多线程完成可用/不可用列表 + 订单扣减金额计算</td>
+</tr>
+<tr>
+<td>面试</td>
+<td>30-34</td>
+<td>四项压测（推送分发/秒杀/查询/金额计算）+ 简历编写</td>
+</tr>
+</tbody>
+</table>
+<p><strong>防重复提交的抽象路径（本项目最具迁移价值的工程实践）</strong>：先写到业务代码 → 再抽象到 <strong>SpringBoot Starter</strong>（Spring AOP + 注解）→ Jmeter 和单元测试<strong>复现问题</strong>。"多场景通用代码，写到业务里只是第一步，更重要的是能够掌握抽象的能力。"</p>
+<h3 id="3_4">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>坑</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>百万行 Excel 解析 OOM</td>
+<td>EasyExcel 流式解析；项目先铺垫"主流框架有什么问题"再讲最终方案（两框架 100w 行性能对比）</td>
+</tr>
+<tr>
+<td>秒杀超卖</td>
+<td>扣减原子性 + 对账补偿（见 02.2 Redis 原子扣减）</td>
+</tr>
+<tr>
+<td>用 Redis 默认配置跑 Demo 以为就是全部</td>
+<td>"大错特错"——必须讲<strong>最适合项目的淘汰策略</strong>等线上配置</td>
+</tr>
+<tr>
+<td>分库分表 vs 分布式数据库选错</td>
+<td>作者三论点：兼容性（不能 100% 兼容 MySQL 则无法平滑迁移）、技术储备（"线上出问题不知道怎么解决才是致命"）、使用成本（云厂商无开源版、TiDB 开源版 BUG 多）→ <strong>ShardingSphere 依然抗打</strong></td>
+</tr>
+<tr>
+<td>后台 CRUD 觉得没技术含量</td>
+<td>创建模板涉及责任链、优雅操作日志、缓存预热——"把这些技能学会，可以很好应用到自己项目当中"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_4">4. 优化进阶</h3>
+<ul>
+<li><strong>兑换 vs 秒杀两套模式（核心考点）</strong>：两种完全不同的秒杀方式，详细介绍区别和适用优惠券类型——"在合适的业务使用适合的架构方案"；</li>
+<li><strong>分发性能演进方法论</strong>：v1 单条分发 → v2 批量分发，"直观看到这个过程中各自的性能差距"——用版本演进讲性能优化，比直接给结论更有说服力；</li>
+<li><strong>百万预约架构</strong>：分库分表 + XXL-Job 分片扫描 + RocketMQ 延时消息推送提醒（比定时轮询省资源）；</li>
+<li><strong>设计模式集群实战</strong>：责任链（模板创建）、模板方法（MQ 发送）、策略（消息发送能力）——每个模式对应具体业务问题，与 <a href="../01-java-core/01.7-design-patterns.html">01.7 设计模式</a> 互为印证。</li>
+</ul>
+<h3 id="5_4">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>方案 A</th>
+<th>方案 B</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>券发放</td>
+<td>兑换（先到先得）</td>
+<td>秒杀（时间窗）</td>
+<td>纯原子扣减无时间窗 vs 库存预热 + 令牌桶限流 + 异步下单，按一致性要求选</td>
+</tr>
+<tr>
+<td>数据分片</td>
+<td>ShardingSphere 分库分表</td>
+<td>分布式数据库</td>
+<td>兼容性/人才储备/成本三方面权衡，中等体量首选分库分表</td>
+</tr>
+<tr>
+<td>Excel 解析</td>
+<td>主流框架（POI 等）</td>
+<td>EasyExcel</td>
+<td>100w 行场景 EasyExcel 流式解析，避免 OOM</td>
+</tr>
+<tr>
+<td>MQ 防重</td>
+<td>业务幂等</td>
+<td>去重表 + 注解</td>
+<td>注解化去重表，可复用到所有消费场景</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12306">模块六：12306 — 分布式购票系统深挖</h2>
+<blockquote>
+<p>加工来源：sources/nageoffer/12306.md（介绍页 + GitHub README）、sources/nageoffer/12306-tech/ 三篇核心技术文档（分布式 ID / 线程池 Builder / 责任链）。开源：github.com/nageoffer/12306。</p>
+</blockquote>
+<h3 id="1_5">1. 核心原理</h3>
+<ul>
+<li><strong>领域模型</strong>：会员、购票、订单、支付、网关五大服务。<strong>双版本设计</strong>：SpringBoot 聚合服务版本（测试部署，直接起 <code>aggregation-service</code> + 网关）vs SpringCloud 微服务版本（学习微服务设计，分别启动五服务）。</li>
+<li><strong>座位分配算法（优先级阶梯）</strong>：余票校验 → 筛选有两个余票的车厢 → <strong>① 相邻座位 → ② 同车厢不相邻 → ③ 跨车厢不相邻</strong>。同级内遍历所有车厢，逐级降级，"余票充足时一定能够成功完成购票"。</li>
+<li><strong>区间分段扣减模型</strong>：买北京南→南京南，实际扣减 <strong>北京南-济南西、北京南-南京南、济南西-南京南三趟</strong>，任一不满足即失败。这是铁路票务的领域本质——<strong>票额是站间资源</strong>，不是点对点资源。</li>
+<li><strong>站间配额规则</strong>：每个站数之间数量有规则，放票时间一致但<strong>优先大站之间票量</strong>，避免中间站票被刷空导致始发/终到站购票困难。</li>
+</ul>
+<h3 id="2_4">2. 生产落地</h3>
+<ul>
+<li><strong>车次查询：Redis 缓存 + 内存组装，而非 ES</strong>。海量并发下 ES 并发能力与资源占用不适用；查询条件（车次/车组/出发站/到达站/出发时间）都可缓存后在内存组装。<strong>这是"最熟悉的业务用最不适合的方案"的经典反面教材</strong>。</li>
+<li><strong>读扩散治理</strong>：用户名/手机号/邮箱多方式登录，登录时无法确定分片键 → 登录维度<strong>映射表分片</strong> + 读请求扩散到多库聚合。</li>
+<li><strong>分库分表落地三问</strong>（面试标准答案框架）：分片键选哪个字段 → 老业务<strong>平滑上线</strong>（双写/校验/切换）→ 出现问题<strong>快速回滚</strong>。</li>
+<li><strong>缓存穿透深层治理</strong>："网上鼓吹的对不存在 Key 缓存值设为 Null，以及布隆过滤器等<strong>都存在漏洞</strong>"——Null 缓存有短暂脏数据窗口，布隆有误判；企业级方案是二者组合 + 误判兜底走 DB 校验（与 02.2 缓存三兄弟交叉）。</li>
+<li><strong>敏感信息防泄露</strong>：姓名/手机号/邮箱/证件号/住址——落库加密/脱敏 + 访问控制。</li>
+<li><strong>分布式 ID（源码级，详见 sources/nageoffer/12306-tech/distributed-id.md）</strong>：</li>
+<li>雪花算法 64bit 组成：1bit 符号位 + 41bit 时间戳（69 年）+ 5bit 数据中心 + 5bit 机器 + 12bit 序列号（单毫秒 4096 个，<strong>单秒 409w</strong>）；</li>
+<li>位宽可定制：更久加时间戳位、更多节点加标识位、更高并发加序列号位；</li>
+<li><strong>ID 重复三必要条件</strong>：集群部署标识位一致 + 有并发 + 同毫秒同序列号；</li>
+<li>MyBatis-Plus <code>Sequence</code> 用 <strong>MAC + PID</strong> 生成标识位，"有小几率"重复；</li>
+<li><strong>Redis Hash + Lua 动态分配</strong>：<code>dataCenterId</code>/<code>workerId</code> 环状推进，Lua 原子性保证 1024 节点唯一；<strong>服务内唯一优先于全局唯一</strong>（避免单点）；</li>
+<li><strong>Builder 模式创建线程池（详见 12306-tech/threadpool-build.md）</strong>：线程池 7 参构造 + 参数校验规则（coreSize ≥ 0、keepAlive ≥ 0、maxSize &gt; 0 且 ≥ coreSize、队列/工厂/拒绝策略非空）→ 属性间有依赖约束正是 Builder 判据；Hutool <code>ExecutorBuilder</code> 接口式实现 vs 静态内部类式实现对比。</li>
+<li><strong>责任链重构（详见 12306-tech/chain.md）</strong>：两种类型（MyBatis 全量执行型 / SpringMVC 可阻断型）；上游中台数据同步校验业务（必填/非法字符/长度三规则）；<code>VerifyHandlerChain</code> 实现 <code>InitializingBean</code> 收集 IOC 容器中所有 <code>VerifyHandler</code> Bean 成链——<strong>新增校验规则只需加实现类，符合开闭原则</strong>。MyBatis Interceptor 底层 = 责任链 + 动态代理，服务 ParameterHandler/ResultSetHandler/StatementHandler/Executor 四大对象。</li>
+</ul>
+<h3 id="3_5">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>误区</th>
+<th>真相</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>车次查询用 ElasticSearch</td>
+<td>海量并发下 ES 并发能力与资源占用不适用 → Redis 缓存 + 内存组装</td>
+</tr>
+<tr>
+<td>北京南→南京南只扣单趟</td>
+<td>扣减途经三段站间票，任一不满足即失败</td>
+</tr>
+<tr>
+<td>恶意刷中间站票能卡住大站</td>
+<td>站间配额规则 + 动态放票（初期大站多放、临近发车开放小站）</td>
+</tr>
+<tr>
+<td>雪花算法不会重复</td>
+<td>时间回调可致重复；标识位一致 + 并发 + 同毫秒同序列号才会撞——三条件缺一不可</td>
+</tr>
+<tr>
+<td>MyBatis-Plus 标识位绝对唯一</td>
+<td>MAC + PID 方案有小几率重复 → 动态分配（Redis + Lua）</td>
+</tr>
+<tr>
+<td>聚合版本和微服务版本随便选</td>
+<td>聚合版适合测试部署，微服务版适合学习设计——场景错配则学习效率减半</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_5">4. 优化进阶</h3>
+<ul>
+<li><strong>雪花算法超 1024 节点</strong>：扩展标识位（如 10bit）或选开源方案——美团 Leaf（额外提供<strong>号段模式</strong>，缓解时钟回回调依赖）、百度 Uid；</li>
+<li><strong>责任链工程化两难</strong>：处理器执行顺序定义（长耗时低过滤率的放最后）+ 单数据类型定制过滤（如学号规则只适合学生数据）——"设计模式是思想，不是固定代码写法"；</li>
+<li><strong>100+ 文档的知识产品化</strong>：入门准备 / 快速开始 / 核心技术 / 从零到一 / 面试系列五层结构——学习材料本身的产品化设计，值得借鉴到自己的知识库。</li>
+</ul>
+<h3 id="5_5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>方案</th>
+<th>结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>海量条件查询</td>
+<td>ES vs Redis 组装</td>
+<td>并发极高时 <strong>Redis 组装</strong>（本项目实践）</td>
+</tr>
+<tr>
+<td>全局唯一 ID</td>
+<td>UUID vs 雪花 vs Leaf/Uid</td>
+<td>要短且有序选雪花；&gt;1024 节点或全局唯一再上 Leaf</td>
+</tr>
+<tr>
+<td>标识位分配</td>
+<td>预分配 vs 动态分配</td>
+<td>节点固定预分配；动态扩容必须 Redis/ZooKeeper 动态分配</td>
+</tr>
+<tr>
+<td>ID 唯一范围</td>
+<td>服务内唯一 vs 全局唯一</td>
+<td><strong>默认服务内唯一</strong>（避免单点），有全局需求再共库</td>
+</tr>
+<tr>
+<td>项目版本</td>
+<td>聚合服务 vs 微服务</td>
+<td>测试部署选聚合，学习微服务设计选微服务</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="link-saas">模块七：Link SaaS 短链 — 海量并发与存储深挖</h2>
+<blockquote>
+<p>加工来源：sources/nageoffer/shortlink.md（介绍页 + GitHub README）。开源：github.com/nageoffer/shortlink。</p>
+</blockquote>
+<h3 id="1_6">1. 核心原理</h3>
+<ul>
+<li><strong>五步原理链</strong>：生成短码（哈希/Base62/随机数/雪花ID + 碰撞校验）→ 建立映射并持久化（Redis + MySQL，支持去重/过期/权限）→ 构造短链（域名 + 短码）→ 访问时查表 <strong>301/302 重定向</strong> → 埋点统计（PV/UV、IP、来源、地区、设备/浏览器）。</li>
+<li><strong>一句话本质</strong>："你看到的不只是'一个更短的链接'，而是一套围绕<strong>传播、转化与可观测</strong>构建的链接基础设施。"</li>
+<li><strong>技术架构</strong>：JDK 17 + Spring Boot 3 + SpringCloud 微服务。仓库顶层结构：<code>admin</code>（管理端）/ <code>aggregation</code>（聚合）/ <code>console-vue</code>（前端控制台）/ <code>format</code>（链接文件格式化）/ <code>gateway</code>（网关）/ <code>project</code>（业务）/ <code>resources/database</code>（库表脚本）。</li>
+</ul>
+<h3 id="2_5">2. 生产落地</h3>
+<ul>
+<li><strong>SaaS 五大挑战 → 架构应答</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>挑战</th>
+<th>架构应答</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>海量并发</td>
+<td>网关限流 + 缓存抗读；跳转接口峰值 <strong>56k QPS</strong></td>
+</tr>
+<tr>
+<td>海量存储</td>
+<td><strong>冷热分层</strong>：热短码 Redis / 温 MySQL / 冷对象存储 + 分库分表</td>
+</tr>
+<tr>
+<td>多租户</td>
+<td>数据隔离 + 性能隔离 + 安全合规（租户维度分片键）</td>
+</tr>
+<tr>
+<td>数据安全</td>
+<td>敏感信息保护 + 访问控制 + 审计日志</td>
+</tr>
+<tr>
+<td>可扩展</td>
+<td>无状态水平扩展 + 分库分表拆分数据平面</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>第三方压测（阿里云 PTS）——项目可信度的核心证据</strong>：创建接口 <strong>12k TPS</strong> / 跳转接口 <strong>56k QPS</strong>。"高并发写入与极高读流量场景下均具备稳健表现。"</li>
+<li><strong>随课交付的工程化清单</strong>：架构设计、分库分表、缓存治理、监控告警、风控限流、可观测、上线运维 + 精美前端控制台（可用于校招/毕设/内训）。</li>
+<li><strong>110+ 节视频、20-30 小时</strong>，覆盖需求→设计→编码→联调→压测→上线全流程，"代码全部是录制过程中现场从零写的"。</li>
+</ul>
+<h3 id="3_6">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>坑</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>短码碰撞</td>
+<td>生成后碰撞校验 + 重试；<strong>唯一索引兜底</strong></td>
+</tr>
+<tr>
+<td>多租户数据串权</td>
+<td>租户 ID 强制注入查询条件（MyBatis 拦截器/行级策略）——与 02.3 交叉</td>
+</tr>
+<tr>
+<td>海量存储成本失控</td>
+<td>冷热分层 + 生命周期管理，冷数据下沉对象存储</td>
+</tr>
+<tr>
+<td>跳转延迟影响转化</td>
+<td>301/302 选择 + 缓存直出（见选型对比）</td>
+</tr>
+<tr>
+<td>风控缺失被刷爆</td>
+<td>频控（单租户 QPS）+ 防刷（IP + 设备指纹）+ 黑白名单</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_6">4. 优化进阶</h3>
+<ul>
+<li><strong>短码策略四选一深度对比</strong>（见 5. 选型表）：没有银弹，按"短码长度要求 / 是否可逆 / 碰撞处理成本 / 是否依赖时钟"裁决；</li>
+<li><strong>数据闭环</strong>：埋点（PV/UV/来源/地区/设备）→ 看板 → A/B 测试与投放优化——短链的终极价值不是"短"，而是<strong>可度量</strong>；</li>
+<li><strong>运营能力扩展</strong>：有效期、白黑名单、二维码海报分发，形成"传播→转化→复盘"闭环增长。</li>
+</ul>
+<h3 id="5_6">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>哈希（MD5/SHA）</th>
+<th>Base62</th>
+<th>随机数</th>
+<th>雪花 ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>短码长度</td>
+<td>长（需截断）</td>
+<td>短（6-8 位常用）</td>
+<td>可控</td>
+<td>长（需转换压缩）</td>
+</tr>
+<tr>
+<td>可逆性</td>
+<td>不可逆</td>
+<td>可逆（编码）</td>
+<td>不可逆</td>
+<td>可逆（含时间戳信息）</td>
+</tr>
+<tr>
+<td>碰撞概率</td>
+<td>截断后有碰撞</td>
+<td>碰撞后重试</td>
+<td>碰撞后重试</td>
+<td>几乎无（依赖标识位）</td>
+</tr>
+<tr>
+<td>依赖</td>
+<td>无</td>
+<td>无</td>
+<td>无</td>
+<td><strong>时钟一致性</strong></td>
+</tr>
+<tr>
+<td>适用</td>
+<td>同链接可去重</td>
+<td><strong>主流方案</strong></td>
+<td>简单场景</td>
+<td>需要时序的场景</td>
+</tr>
+</tbody>
+</table>
+<p><strong>301 vs 302 重定向裁决</strong>：301 永久重定向（浏览器缓存、SEO 权重传递、但<strong>无法统计点击</strong>）vs 302 临时重定向（每次经过服务端、<strong>可埋点统计</strong>）。短链业务需要 PV/UV 埋点 → <strong>选 302</strong>；纯缩短无统计需求 → 301 减轻服务端压力。</p>
+<hr />
+<h2 id="ragent-v2-agentic-rag">案例深挖：Ragent V2 企业级 Agentic RAG 架构</h2>
+<h3 id="1_7">1. 核心原理</h3>
+<p><strong>定位</strong>：面向 Agentic RAG 演进的生产级 Java AI 平台（GitHub 开源 nageoffer/ragent）。前后端分离<strong>模块化单体</strong>，7 个 Maven 模块按职责隔离——<code>infra-ai</code>（模型客户端/档位/路由/首包探测/降级）、<code>system</code>（认证审计）、<code>rag</code>（问答/知识库/入库 Pipeline/意图树）、<code>agent</code>（AgentScope ReAct 引擎 + MCP 工具 + 技能/记忆/人工确认）、<code>bootstrap</code>（启动装配）、<code>framework</code>（统一响应/幂等/分布式 ID/MQ/SSE）、<code>mcp-server</code>（独立 MCP 工具示例服务）。<strong>分层目的：业务编排、AI 供应商差异、通用基础设施三方隔离</strong>——换模型/向量库/存储，核心流程不重写。</p>
+<p><strong>v1 vs v2</strong>：v1 Workflow 路径写死（重写→意图→召回→生成线性）；v2 Agentic 路径由模型自定（ReAct 循环里决定查不查、查几次、接着干什么）。<strong>两套并存</strong>：问答类走 v1 快可控，要规划要动手的交给 v2。</p>
+<h3 id="2_6">2. 生产落地</h3>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>流量保护</td>
+<td>Redis ZSET 公平排队 + Lua 原子抢占 + 过期信号量 + Pub/Sub 唤醒</td>
+</tr>
+<tr>
+<td>模型容错</td>
+<td>多候选模型自动切换；首包超时/空响应/异常降级；三态熔断隔离故障节点</td>
+</tr>
+<tr>
+<td>检索稳定性</td>
+<td>多通道并行，单通道失败不影响主链；召回/Rerank/TopK 分层控制规模</td>
+</tr>
+<tr>
+<td>数据一致性</td>
+<td>RocketMQ 事务消息保障分块可靠执行；幂等；远程刷新用分布式锁+状态机</td>
+</tr>
+<tr>
+<td>可观测</td>
+<td>Trace Run/Node 耗时/输入输出/异常；Langfuse 追踪推理/工具调用/Token</td>
+</tr>
+<tr>
+<td>流式</td>
+<td>SSE 分事件输出思考/正文/来源/推荐问题；全局超时 + 客户端断开取消</td>
+</tr>
+<tr>
+<td>Agent 保障</td>
+<td>上下文按水位裁剪压缩；长期记忆跨会话；写操作人工确认；执行中断</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>Sa-Token 认证、数据归属校验、上传限流、参数校验、统一异常</td>
+</tr>
+</tbody>
+</table>
+<p><strong>工程质量</strong>：10 个专用线程池隔离负载 + TTL 上下文跨线程传递；模型档位/候选/检索漏斗<strong>启动阶段一致性校验</strong>（fail-fast 不静默降质）；测试覆盖模型路由/检索预算/会话摘要/入库 Pipeline/MCP/Agent 记忆。</p>
+<p><strong>设计模式实战</strong>：策略（检索通道/后处理）、工厂（意图树/分块策略）、模板方法（并行检索）、注册表（意图节点）、装饰器（向量写入同步关键词图谱索引）、责任链（后处理/故障降级）、中间件（记忆注入/上下文压缩/技能遮蔽/工具批处理）、适配器（模型方言/MQ 客户端）、状态机（文档定时刷新）、事件回调（流式/首包探测/SSE）、AOP（追踪/幂等/审计）。</p>
+<h3 id="3_7">3. 踩坑规避</h3>
+<ul>
+<li><strong>错误配置静默降质</strong>：启动阶段强制校验模型档位与检索漏斗一致性，直接失败；</li>
+<li><strong>写操作误执行</strong>：MCP 写操作强制人工确认（先展示内容和原始参数）；</li>
+<li><strong>突发流量压垮模型服务</strong>：Redis 公平排队 + 分布式并发控制，不用本地限流；</li>
+<li><strong>Token 成本失控</strong>：最近 N 轮 + 持久化摘要；Agent 上下文按水位裁剪压缩；</li>
+<li><strong>单一模型故障</strong>：多候选路由 + 三态熔断，单节点故障不传导主链。</li>
+</ul>
+<h3 id="4_7">4. 优化进阶</h3>
+<p>扩展点设计：模型实现 <code>ChatClient</code>/<code>EmbeddingClient</code>/<code>RerankClient</code> 接口进候选配置 → 新供应商复用首包探测/健康检查/降级；存储实现 <code>ObjectStorageClient</code>/向量存取可配置替换；检索实现 <code>SearchChannel</code> 注册为 Bean → 参与并行召回；入库实现 <code>IngestionNode</code> → 进 Pipeline。<strong>改动收敛在新实现和配置，不复制主链路</strong>。</p>
+<h3 id="5_7">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>常见 RAG Demo</th>
+<th>Ragent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>检索</td>
+<td>单路向量 TopK</td>
+<td>向量/关键词/图谱/联网 + RRF 融合 + Rerank</td>
+</tr>
+<tr>
+<td>问题理解</td>
+<td>原问题直接检索</td>
+<td>查询词映射/重写拆分/意图树/多库路由</td>
+</tr>
+<tr>
+<td>模型</td>
+<td>单模型直连</td>
+<td>档位 + 首包探测 + 熔断降级</td>
+</tr>
+<tr>
+<td>工具</td>
+<td>应用内函数调用</td>
+<td>MCP 协议 + 远程发现 + Schema 校验 + 人工确认</td>
+</tr>
+<tr>
+<td>智能体</td>
+<td>无或单轮调用</td>
+<td>ReAct 多轮 + 技能体系 + 中断恢复</td>
+</tr>
+<tr>
+<td>记忆</td>
+<td>近期消息拼接</td>
+<td>最近 N 轮 + 持久化摘要 + 三层上下文</td>
+</tr>
+<tr>
+<td>运行保障</td>
+<td>基础日志</td>
+<td>分布式限流/幂等/事务消息/Trace/审计</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ragent">模块八：Ragent 源码级走读（类级别深潜）</h2>
+<blockquote>
+<p>走读对象：GitHub <code>nageoffer/ragent</code> 浅克隆（depth=1）——945 个 Java 文件、约 11.9 万行、7 个 Maven 模块。完整类清单/接口签名/调用链见 <code>sources/nageoffer/ragent/source-walkthrough.md</code>。本节在上方「案例深挖」架构概览基础上落到<strong>类级别</strong>：关键接口长啥样、调用链怎么走、并发与降级细节在哪。</p>
+</blockquote>
+<h3 id="1_8">1. 核心原理（源码视角的架构）</h3>
+<p><strong>引擎选择是 Bean 装配开关而非运行时分支</strong>：<code>@ConditionalOnAgentEngine</code>（自定义条件注解，<code>ragent.engine.type=agent</code> 才注册）——workflow 时 agent 模块零注册零开销；agent 时 RAG 管线降级为 <code>search_knowledge</code> 一个工具。两套引擎共用 DB 与 <code>KnowledgeSearchFacade</code> 检索门面。<strong>这是「部署级决策用编译期/装配期表达」的教科书做法</strong>，比运行时 if-else 更干净。</p>
+<p><strong>v1 问答主链</strong>（包前缀 <code>com.nageoffer.ai.ragent.rag</code>）：<code>RAGChatController#chat</code>（SseEmitter + <code>@IdempotentSubmit</code> 防重复提交）→ <code>RAGChatServiceImpl#streamChat</code>（雪花 conversationId/taskId）→ <code>ChatQueueLimiter#enqueue</code>（限流开关分流）→ <code>StreamChatTraceRunner#run</code>（ForwardingStreamCallback 装饰记 TTFT）→ <code>StreamChatPipeline#execute</code>。Pipeline 阶段：<code>loadMemory → rewriteQuery → resolveIntents → handleGuidance（歧义短路）→ handleSystemOnly → retrieve → handleEmptyRetrieval → streamRagResponse</code>，私有 <code>handleXxx</code> 返回 true 短路，<code>StreamChatContext</code> 承载中间状态。</p>
+<p><strong>v2 ReAct 主链</strong>（包前缀 <code>com.nageoffer.ai.ragent.agent</code>）：<code>AgentChatServiceImpl#streamChat</code> → <code>ReActAgentProvider#buildAgent</code>（AgentScope <code>ReActAgent</code> 单例，按「人设+工具目录指纹」懒重建）→ <code>agent.streamEvents → Flux&lt;AgentEvent&gt;</code> → <code>AgentStreamEventBridge</code> 转 SSE+落库。构建参数 <code>maxIters=10 / maxRetries=1 / enablePendingToolRecovery(true)</code>（强制停止留悬空调用，下轮先补错误结果）。中间件洋葱链（外→内）：<code>OtelTracing → AgentTraceEnrichment → userMemory → contextCompaction → confirmDenial → skillMasking → toolBatch(order=0 最内)</code>。</p>
+<h3 id="2_7">2. 生产落地（关键接口与调用链）</h3>
+<p><strong>检索通道接口</strong>（策略 + 条件注册）：</p>
+<pre><code class="language-java">public interface SearchChannel {
+    String getName();
+    boolean isEnabled(SearchContext context);
+    SearchChannelResult search(SearchContext context);
+    SearchChannelType getType();
+    default SearchChannelResult emptyResult(long latencyMs);  // 统一空结果形状
+}
+</code></pre>
+<p>四实现：Vector（定向/全局同通道避免 RRF 自我加权；主路+补充路共用一次 embedding；<code>CollectionParallelRetriever</code> 逐库 fan-out）、Keyword（ES BM25，<code>@ConditionalOnProperty(rag.keyword.type=es)</code>）、Graph（LightRAG，定向下 top_k×3 上浮）、Web（You.com，失败只 warn+空结果）。<code>MultiChannelRetrievalEngine</code> 用 <code>CompletableFuture.supplyAsync(ragRetrievalExecutor)</code> 并行 + <code>orTimeout(15s)</code> <strong>超时按空结果降级不中断任务</strong>。</p>
+<p><strong>后处理责任链</strong>（order 1→20）：Dedup（<code>RetrievedChunkKey</code> 保留首次）→ Fusion（RRF <code>Σ weight/(k+rank+1)</code>，k=20，vector/keyword 权重 1.0、graph/web 0.5；名次取自不可变 results，去重不丢多路命中）→ Rerank（Cross-Encoder 按 contextTopK 精排）→ EvidenceGate（整批最高精排分 &lt;0.2 整批丢弃；<strong>无分可读一律放行</strong>）→ MetadataEnrichment（链末回表只富化不重排）。单处理器异常只跳过该处理器。</p>
+<p><strong>模型路由三件套</strong>（infra-ai）：
+- 档位：<code>Tier{FAST,STANDARD,DEEP}</code>，解析序 <code>thinking=true→deep</code> → override → default；<code>ChatTierConfigValidator</code> 启动 fail-fast（档位必填 timeout-ms、候选 id 在注册表、deep 档必须有支持思考的候选）
+- 首包探测：<code>ProbeStreamBridge</code> 缓冲装饰——未提交前缓存全部事件，<strong>非空白内容才判探测成功</strong>；SUCCESS 锁内按序 flush（含首包前空白/thinking）；<strong>ERROR/NO_CONTENT buffer 永不 flush 随桥丢弃</strong>——这就是「模型切换用户端零脏数据」的源码级答案
+- 熔断：<code>ModelHealthStore</code> 每模型独立 <code>ConcurrentHashMap</code> + 三态机；半开期 <code>halfOpenToken</code> 唯一名额（并发仅放行 1 个）；<code>TaskCancellation.isCancellation</code> 甄别取消——<strong>不计失败、不降级</strong>，只归还半开名额</p>
+<p><strong>Agent 工具与技能</strong>：<code>AgentToolCatalog</code> 固定 3 内置工具（search_knowledge/flush_memory/load_skill）+ 意图树 ∩ MCP 实际发现取交集挂载；<code>McpToolProxy</code> 按 <code>needsConfirm = 意图树勾选 || 服务端未声明 readOnlyHint</code> 决定 <code>PermissionDecision.ask/allow</code>。Skills 渐进披露三层：工具描述清单（L0）→ load_skill 取正文（L1）→ 手册解锁工具放行（L2）；<code>AgentSkillMaskingMiddleware</code> 算遮蔽集 <strong>G−L</strong>，且<strong>手册被上下文压缩带走时遮蔽自动复位</strong>（解锁只认上下文里的 load_skill 结果 metadata）。</p>
+<p><strong>Agent 记忆三层</strong>（阈值均相对 contextWindowChars=120 万字符）：trim 0.5×（老工具结果换占位、保留 id 配对、只裁 evictableTools）→ compact 0.8× 且末条 USER（<code>findSafeCutoff</code> 从尾部保留 ≥0.2× 后取首个用户轮切点；摘要以 <code>__compaction_summary__</code> 覆盖式替换；同步阻塞首字 120s 超时放弃）→ 长期记忆（FLUSH 模型触发 / BACKGROUND 异步门槛 3 条；Judge 一次调用产 ADD/UPDATE/DELETE/CLEAR；容量 0.005× 夹 [1500,6000] 顶限先合并再淘汰）。</p>
+<p><strong>公平排队限流</strong>（<code>FairDistributedRateLimiter</code>）：Redisson 信号量 + ZSET 队列 + Lua 原子 claim（<code>ZRANGE 0, maxRank+slack-16</code>，entry TTL 判活、僵尸 ZREM 清理）+ RTopic 唤醒 poller。Ticket 状态机 <code>PENDING→GRANTED/TIMED_OUT/CANCELLED</code> CAS 终态互斥；<strong>GRANTED 态 cleanup 不释放 permit</strong>（防让出使用中的 slot）；「队头无 permit」按原 score 重入队保公平。拒绝也落库（REJECTED 消息 + SSE reject 事件，前端历史完整）。</p>
+<p><strong>8 个专用线程池</strong>（<code>rag/config/ThreadPoolExecutorConfig</code>，全部 TtlExecutors 包装）：检索/意图/记忆/流式/分块各自隔离；<code>chatEntryExecutor</code> 大小=globalMaxConcurrent 且 <code>allowCoreThreadTimeOut(true)</code>；流式/分块/入口用 AbortPolicy（保护模型服务），检索类用 CallerRuns（背压自然降速）。</p>
+<p><strong>入库 Pipeline</strong>：<code>IngestionEngine</code> 注册表（nodeType→node）+ 环检测 + 单起点校验；<code>NodeResult</code> 四终态（ok/skip/terminate/fail）；<code>ConditionEvaluator</code> JSON 条件树 + SpEL；<code>ParserRegistry</code> <strong>MIME×档位双表</strong> + Tika 自检 22 扩展名启动失败即报错；每节点一行 <code>t_ingestion_task_node</code> 日志（outputJson 1MB 截断）；<strong>无重试机制</strong>（失败即终态，重跑靠重新提交——显式设计取舍）。</p>
+<h3 id="3_8">3. 踩坑规避（源码级对策）</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>源码级对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型切换时用户收到半截脏数据</td>
+<td>ProbeStreamBridge 未提交前 buffer，失败永不 flush；OkHttp call.cancel() 立即断上游</td>
+</tr>
+<tr>
+<td>单一模型故障传导主链</td>
+<td>每模型独立三态熔断 + 半开单名额探测；取消不计失败</td>
+</tr>
+<tr>
+<td>意图判错时正确证据拼不过命中库</td>
+<td>ScopeQuota 补充路固定名额（ratio 0.25），非自由竞争</td>
+</tr>
+<tr>
+<td>多路命中同一证据被 RRF 自我加权</td>
+<td>定向/全局共用同一向量通道；RRF 名次取自不可变 results</td>
+</tr>
+<tr>
+<td>上下文注入文档标题诱发「出自《XX》」幻觉</td>
+<td>DefaultContextFormatter 刻意不注入标题</td>
+</tr>
+<tr>
+<td>多轮改写实体串台</td>
+<td>assistant 历史仅留最近 2 条 NORMAL（排除半截答案）</td>
+</tr>
+<tr>
+<td>摘要反复重生成</td>
+<td>摘要窗口取中点 cutoff，重叠段滑出后再生成</td>
+</tr>
+<tr>
+<td>前端篡改确认入参</td>
+<td>confirm 入参从 agent state 的 ToolCallState.ASKING 取，不信前端</td>
+</tr>
+<tr>
+<td>僵尸请求占队列位</td>
+<td>Lua entry TTL 判活 + ZREM 清理；队头无 permit 原位重入</td>
+</tr>
+<tr>
+<td>错误配置静默降质</td>
+<td>档位/漏斗/闸门联动/ParserRegistry 全部启动期 fail-fast</td>
+</tr>
+<tr>
+<td>父子线程 trace 层级串挂</td>
+<td>RagTraceContext.NODE_STACK 重写 copy() 深拷贝</td>
+</tr>
+<tr>
+<td>双真相（trace/SSE/落库不一致）</td>
+<td>AgentToolExecutionFacts 单一事实源，三处共用</td>
+</tr>
+<tr>
+<td>MQ 重复消费/表单重复提交</td>
+<td>@IdempotentConsume/@IdempotentSubmit + Lua SET NX GET PX 三态机</td>
+</tr>
+<tr>
+<td>taskId 雪花可预测被冒用取消</td>
+<td>cancelByUser 校验 UserContext 属主（owner Bucket）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_8">4. 优化进阶</h3>
+<ul>
+<li><strong>检索归因日志</strong>：融合池/送排/精排存活按通道分布、精排分高低端、图谱存活率——用来校准 RRF 权重与阈值（graph/web 0.5 就是这么调的）</li>
+<li><strong>检索漏斗三段独立</strong>：recall 20 → candidate 40 → contextTopK 10，启动校验单调，任何一段调参不动其他段</li>
+<li><strong>引用编号一次生成四处共用</strong>：检索完成后一次性赋号，Prompt 角标/SSE 面板/落库/前端同源；内部 docId 不暴露给模型</li>
+<li><strong>内外双层记忆循环</strong>：内层 AgentContextCompactor 管会话内，外层 AgentMemoryPipeline（Judge/Consolidator）管跨会话，中间 <code>__compaction_summary__</code> 是两者接缝</li>
+<li><strong>引擎图纸工具无关</strong>：同上文 Loop Engineering 判断——Ragent 的档位/候选/通道/Pipeline 全是接口+配置，换供应商不重写主链</li>
+</ul>
+<h3 id="5_8">5. 选型对比（走读结论）</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>常见 RAG Demo</th>
+<th>Ragent 源码事实</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>引擎切换</td>
+<td>运行时 if-else</td>
+<td>Bean 装配级 <code>@ConditionalOnAgentEngine</code>，零互相干扰</td>
+</tr>
+<tr>
+<td>模型容错</td>
+<td>try-catch 重试</td>
+<td>档位候选 + 首包探测缓冲 + 每模型三态熔断 + 取消甄别</td>
+</tr>
+<tr>
+<td>检索失败</td>
+<td>整体报错</td>
+<td>通道级 <code>orTimeout</code> 空结果降级，主链不中断</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>本地 Semaphore</td>
+<td>Redis 信号量+ZSET+Lua 原子 claim+僵尸清理+公平重入队</td>
+</tr>
+<tr>
+<td>上下文注入</td>
+<td>直接拼字符串</td>
+<td>buildStructuredMessages 三分段 + 引用编号一次生成 + 不注入标题</td>
+</tr>
+<tr>
+<td>记忆</td>
+<td>全量历史</td>
+<td>滑窗(8轮)+Redisson 锁摘要(9轮触发)+Agent 三层（trim/compact/长期）</td>
+</tr>
+<tr>
+<td>工具确认</td>
+<td>无</td>
+<td>PermissionDecision.ask + 入参从状态取 + 卡片状态机双轨</td>
+</tr>
+<tr>
+<td>入库</td>
+<td>脚本</td>
+<td>节点注册表 + 环检测 + 条件执行 + 每节点日志 + 无重试显式取舍</td>
+</tr>
+<tr>
+<td>可观测</td>
+<td>日志</td>
+<td>@RagTraceNode AOP + TTL 透传 + 流式跨线程 span + Langfuse OTLP</td>
+</tr>
+</tbody>
+</table>
+<p><strong>一句话</strong>：Ragent 把「生产落地智能体会踩的坑」逐条落成了类——每个坑都能在源码里指出对应的那个接口、那个中间件、那个 Lua 脚本，这就是源码级走读相对架构图的价值。</p>
+<hr />
+<h2 id="12306_1">模块九：12306 源码级走读（购票主链）</h2>
+<blockquote>
+<p>加工来源：浅克隆 github.com/nageoffer/12306（414 Java / 约 3 万行）。存档 <a href="../../sources/nageoffer/12306/source-walkthrough.html">sources/nageoffer/12306/source-walkthrough.md</a>。与模块六的介绍级算法互补：本模块是类与调用链。</p>
+</blockquote>
+<h3 id="1_9">1. 核心原理</h3>
+<p>购票不是扣一条 OD 余票，而是锁住「出发→到达」展开后的<strong>每一段</strong>座位。<code>listTakeoutTrainStationRoute</code> → <code>StationCalculateUtil.takeoutStation</code>。</p>
+<p>选座阶梯在代码里是三次尝试：<code>SeatSelection.adjacent</code> → <code>nonAdjacent</code> 同车厢 → 多车厢拼接。席别用策略键 <code>车型+席别</code> 分发到一等/二等/商务 Handler；扣缓存在模板 <code>executeResp</code>，锁 DB 在 <code>TrainSeatTypeSelector</code> 末尾 <code>lockSeat</code>。</p>
+<h3 id="2_8">2. 生产落地</h3>
+<p><strong>v2 主链</strong>：</p>
+<pre><code>purchaseTicketsV2
+ → 责任链校验
+ → Lua 令牌桶（沿途全段 HINCRBY，不足则整单不扣）
+ → 本地公平锁 + Redisson FairLock（trainId + seatType）
+ → executePurchaseTickets → select → lockSeat → UNPAID 车票 + 远程建单
+</code></pre>
+<p><code>lockSeat</code> 对「每个座位 × 每一段」更新 <code>seatStatus=LOCKED</code>；取消 <code>unlock</code> 回 AVAILABLE。<code>cache-update.type=binlog</code> 时请求线程不改余票 Hash，改由 Canal Handler 回写。</p>
+<p>登录：邮箱/手机先查映射表再按 username 查用户，避免分片键未知时的读扩散。用户名占用：布隆 + <code>hash(username)</code> 分片的复用 Set。</p>
+<h3 id="3_9">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>源码对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>中间站超卖</td>
+<td>只扣 OD 不扣途经段</td>
+<td>Lua 与 lockSeat 都按 takeout 段</td>
+</tr>
+<tr>
+<td>有缓存无座位</td>
+<td>余票缓存与座位行不一致</td>
+<td>令牌桶在锁前原子预扣；不够直接拒绝</td>
+</tr>
+<tr>
+<td>令牌空时打爆 DB</td>
+<td>全体刷新库存</td>
+<td>Caffeine 10 分钟 + synchronized 单飞刷新</td>
+</tr>
+<tr>
+<td>一等座堵住二等座</td>
+<td>v1 整车一把锁</td>
+<td>v2 按席别拆公平锁</td>
+</tr>
+<tr>
+<td>用户名枚举打穿缓存</td>
+<td>只缓存 null</td>
+<td>布隆 + 分片 Set；注册成功才 bloom.add</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_9">4. 优化进阶</h3>
+<p>v1 整车锁已标注为有严重问题的旧路径。幂等注解把「同用户重复点击」挡在锁外。商务座另走位图 <code>BitMapCheckSeatStatusFactory</code>，与一等座二维数组是同一「空位矩阵」思想的不同编码。</p>
+<h3 id="5_9">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>介绍页（模块六）</th>
+<th>源码事实（模块九）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分段扣减</td>
+<td>三段举例</td>
+<td>takeout 全段 + Lua 与 DB 双写</td>
+</tr>
+<tr>
+<td>选座</td>
+<td>五步叙述</td>
+<td>adjacent / nonAdjacent / 跨车厢代码路径</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>概念</td>
+<td>令牌桶 Lua 先于锁</td>
+</tr>
+<tr>
+<td>登录读扩散</td>
+<td>映射表方案</td>
+<td>UserMail/UserPhone → username</td>
+</tr>
+<tr>
+<td>并发</td>
+<td>未展开</td>
+<td>v1 整车锁 vs v2 席别公平锁</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">待补充清单</h2>
+<ul>
+<li>✅ 牛券 34 小节课程逐模块拆解 → 已完成（模块五，循环12）</li>
+<li>✅ 12306 座位分配算法 + 分段扣减模型 → 已完成（模块六，循环12）</li>
+<li>✅ 12306 核心技术文档三篇 → 已完成（模块六，循环12）</li>
+<li>✅ Link 冷热分层 + 多租户 → 已完成（模块七，循环12）</li>
+<li>✅ Ragent 源码级拆解 → 已完成（模块八，循环26）</li>
+<li>✅ 12306 GitHub 源码级走读（购票主链）→ 已完成（模块九，循环30）</li>
+<li>✅ Link GitHub 源码级走读 → 已完成（模块十，循环31）</li>
+<li>牛券：公开 GitHub 不存在（onecoupon / oneCoupon 均为 404）。课程级内容停在模块五，不再等待源码</li>
+</ul>
+<hr />
+<h2 id="link">模块十：Link 短链源码级走读</h2>
+<blockquote>
+<p>浅克隆 github.com/nageoffer/shortlink（188 Java）。存档 sources/nageoffer/shortlink/source-walkthrough.md。</p>
+</blockquote>
+<h3 id="1_10">1. 核心原理</h3>
+<p>短码 = <code>MurmurHash32(originUrl + UUID)</code> 再转 Base62。跳转不能按 gid 分片直接查：请求只有短码。所以另有 <code>ShortLinkGotoDO</code>，用 <code>fullShortUrl</code> 换出 <code>gid</code>，再查短链表。</p>
+<h3 id="2_9">2. 生产落地</h3>
+<p>创建：白名单 → 布隆判重（最多重试 10 次）→ 插两表 → Redis 预热跳转缓存 → 布隆 add。</p>
+<p>跳转 <code>restoreUrl</code>：Redis 命中即 302；布隆没有则 404 不打库；布隆有但可能误判时，空值 key 挡 30 分钟；未命中则加锁双检，查 Goto → 按 gid 查短链，过期写空值缓存。统计走 RocketMQ，不堵跳转。</p>
+<h3 id="3_10">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>跳转扫全库</td>
+<td>分片键是 gid，请求没有 gid</td>
+<td>Goto 路由表</td>
+</tr>
+<tr>
+<td>不存在的短码打穿 DB</td>
+<td>缓存未命中就查库</td>
+<td>布隆 + 空值缓存 + 锁内双检</td>
+</tr>
+<tr>
+<td>哈希碰撞</td>
+<td>Murmur 有限空间</td>
+<td>UUID 盐 + 布隆/唯一键重试</td>
+</tr>
+<tr>
+<td>布隆不能删</td>
+<td>删除短链后过滤仍说「可能存在」</td>
+<td>靠 DB 与空值缓存兜底，不把布隆当精确集合</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_10">4. 优化进阶</h3>
+<p>主路径创建不用全局锁（<code>createShortLinkByLock</code> 是对照实现）。跳转缓存 TTL 跟有效期走，避免过期链接继续 302。</p>
+<h3 id="5_10">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>锁内查库生成</th>
+<th>布隆 + 唯一键（主路径）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>创建吞吐</td>
+<td>全局锁串行</td>
+<td>无锁探测，冲突才失败重试</td>
+</tr>
+<tr>
+<td>正确性</td>
+<td>DB 为准</td>
+<td>DB 唯一约束兜底，布隆只减查询</td>
+</tr>
+</tbody>
+</table></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

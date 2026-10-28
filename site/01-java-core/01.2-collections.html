@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01.2 Java 集合工程化（含 HashMap 深度原理）</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details open><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="active" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="012-java-hashmap">01.2 Java 集合工程化（含 HashMap 深度原理）</h1>
+<blockquote>
+<p>知识域：域1 Java核心与编码工程化
+加工来源：sources/javaguide/java-collection/java-collection-questions-01.md + sources/javaup/java-collection/hashmap-core-principles.md
+关联文档：<a href="01.3-concurrency.html">01.3 并发编程</a>（ConcurrentHashMap 章节）</p>
+</blockquote>
+<h2 id="_1">模块一：集合框架总览与选型</h2>
+<h3 id="1">1. 核心原理</h3>
+<ul>
+<li><strong>两大根接口</strong>：<code>Collection</code>（单一元素，子接口 List/Set/Queue）+ <code>Map</code>（键值对）。</li>
+<li><strong>四者区别</strong>：List 有序可重复；Set 无序不可重（<code>HashSet</code> 基于 <code>HashMap</code>）；Queue 按排队规则有序可重复；Map key 无序不可重（<code>HashMap</code> 无显式顺序，<code>LinkedHashMap</code> 插入/访问序，<code>TreeMap</code> 排序）。</li>
+<li><strong>底层速查</strong>：<code>ArrayList</code>=Object[]；<code>LinkedList</code>=双向链表；<code>HashMap</code>=数组+链表+红黑树；<code>TreeMap</code>=红黑树；<code>LinkedHashMap</code>=HashMap+双向链表。</li>
+</ul>
+<h3 id="2">2. 生产落地</h3>
+<ul>
+<li><strong>默认选型口诀</strong>：单机普通 Map → <code>HashMap</code>；需要顺序 → <code>LinkedHashMap</code>；需要排序/范围查询 → <code>TreeMap</code>；并发 → <code>ConcurrentHashMap</code>。</li>
+<li><strong>初始化容量</strong>：<code>new HashMap&lt;&gt;(expectedSize / 0.75f + 1)</code>，避免扩容；<code>Map&lt;String, X&gt; map = Map.of(...)</code> 用于不可变常量（JDK9+）。</li>
+</ul>
+<h3 id="3">3. 踩坑规避</h3>
+<ul>
+<li><strong>作为字段的集合</strong>：POJO 中的集合字段初始化（<code>new ArrayList&lt;&gt;()</code>），避免 NPE；返回内部集合前 defensive copy（<code>Collections.unmodifiableList</code> 或 <code>List.copyOf</code>）。</li>
+<li><strong><code>Arrays.asList</code> 陷阱</strong>：返回的是 <code>Arrays$ArrayList</code>（定长，<code>add</code> 抛 <code>UnsupportedOperationException</code>），用 <code>new ArrayList&lt;&gt;(Arrays.asList(...))</code> 或 <code>List.of</code>。</li>
+<li><strong><code>subList</code> 是视图</strong>：对原列表结构性修改会使子列表 <code>modCount</code> 失效，遍历抛 <code>ConcurrentModificationException</code>。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong>fail-fast 机制</strong>：迭代时 <code>modCount != expectedModCount</code> 即抛 CME（<code>ArrayList</code>/<code>HashMap</code> 迭代器）；并发场景要么加锁遍历、要么用并发集合（<code>CopyOnWriteArrayList</code>/<code>ConcurrentHashMap</code>，fail-safe）。</li>
+<li><strong><code>HashMap</code> 大 Key 场景</strong>：value 是巨型对象时，考虑按需懒加载，避免内存驻留。</li>
+</ul>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>容器</th>
+<th>随机访问</th>
+<th>插入/删除</th>
+<th>有序</th>
+<th>并发安全</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ArrayList</td>
+<td>O(1)</td>
+<td>O(n)</td>
+<td>插入序</td>
+<td>否</td>
+<td>读多写少、列表</td>
+</tr>
+<tr>
+<td>LinkedList</td>
+<td>O(n)</td>
+<td>O(1)*</td>
+<td>插入序</td>
+<td>否</td>
+<td>队列/栈（少用，ArrayDeque 更优）</td>
+</tr>
+<tr>
+<td>HashSet</td>
+<td>—</td>
+<td>O(1)</td>
+<td>无</td>
+<td>否</td>
+<td>去重</td>
+</tr>
+<tr>
+<td>TreeSet/TreeMap</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>排序</td>
+<td>否</td>
+<td>范围查询、TopN</td>
+</tr>
+<tr>
+<td>LinkedHashMap</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>插入/访问序</td>
+<td>否</td>
+<td>LRU 缓存</td>
+</tr>
+<tr>
+<td>ConcurrentHashMap</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>无</td>
+<td>是</td>
+<td>高并发缓存/计数器</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="list-arraylist-vs-linkedlist">模块二：List — ArrayList vs LinkedList</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>ArrayList</strong>：动态数组，扩容 <code>grow()</code> = 旧容量 1.5 倍（<code>oldCapacity + (oldCapacity &gt;&gt; 1)</code>），<code>System.arraycopy</code> 拷贝。</li>
+<li><strong>LinkedList</strong>：双向链表，节点前后驱指针，头尾插入 O(1)。</li>
+<li><strong>关键结论</strong>：ArrayList 顺序遍历（内存连续，缓存友好）实际常快于 LinkedList 随机访问；LinkedList 按索引访问要 O(n) 定位，<strong>" LinkedList 插入快"只在已知节点位置时成立</strong>。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>预设容量</strong>：已知元素量级时 <code>new ArrayList&lt;&gt;(n)</code>，一次分配避免多次扩容拷贝。</li>
+<li><strong>批量操作</strong>：<code>ensureCapacity</code> + <code>addAll</code> 优于循环 add（减少边界检查与 modCount 变更）。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><strong><code>ArrayList</code> 并发修改</strong>：多线程 add 丢数据/越界；用 <code>CopyOnWriteArrayList</code>（读多写少）或 <code>Collections.synchronizedList</code>。</li>
+<li><strong><code>removeAll</code>/<code>retainAll</code> 语义</strong>：按 equals 移除/保留，自定义对象忘写 equals 会"删不掉"。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>读多写少</strong>：<code>CopyOnWriteArrayList</code> 读无锁；写时复制整数组，<strong>写操作 O(n)</strong>，仅适合配置表、监听器列表这类低频写场景。</li>
+<li><strong><code>ArrayList</code> 缩容</strong>：长期占用大数组可用 <code>trimToSize()</code> 释放（注意并发安全）。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>默认列表</td>
+<td>ArrayList</td>
+<td>缓存友好、随机访问 O(1)</td>
+</tr>
+<tr>
+<td>高频头插/删除且已知节点</td>
+<td>LinkedList</td>
+<td>指针操作 O(1)</td>
+</tr>
+<tr>
+<td>并发读多写少</td>
+<td>CopyOnWriteArrayList</td>
+<td>无锁读</td>
+</tr>
+<tr>
+<td>双端队列/栈</td>
+<td>ArrayDeque</td>
+<td>循环数组，无 LinkedList 的节点开销</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="hashmap-jdk17-18">模块三：HashMap 深度原理（JDK1.7 → 1.8）</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>结构</strong>：数组 + 链表 + 红黑树；<code>hash(key)</code> = <code>h = key.hashCode(); h ^ (h &gt;&gt;&gt; 16)</code>（高 16 位异或低 16 位，减少冲突）；桶索引 <code>(n - 1) &amp; hash</code>（n 为 2 的幂）。</li>
+<li><strong>put 流程</strong>：计算 hash → 定位桶 → 空桶直接放 → 桶首节点 key 相等则覆盖 → 链表尾插（JDK8）→ 长度 ≥ 8 且容量 ≥ 64 树化 → <code>size &gt; threshold</code>（容量×0.75）扩容。</li>
+<li><strong>扩容</strong>：容量翻倍；JDK8 <strong>高低位分离</strong>（<code>e.hash &amp; oldCap == 0</code> 留低位，否则迁到 <code>原索引+oldCap</code>），省去逐节点 rehash；JDK7 需逐个重算 hash。</li>
+<li><strong>树化阈值</strong>：<code>TREEIFY_THRESHOLD=8</code>、<code>UNTREEIFY_THRESHOLD=6</code>、<code>MIN_TREEIFY_CAPACITY=64</code>。</li>
+</ul>
+<p><strong>为什么是 8/6/64（泊松分布推导）</strong>：理想 hash 分布下桶长度服从泊松分布（λ≈0.5，负载因子 0.75）：</p>
+<pre><code>0: 0.60653066   1: 0.30326533   2: 0.07581633
+3: 0.01263606   4: 0.00157952   5: 0.00015795
+6: 0.00001316   7: 0.00000094   8: 0.00000006（千万分之六）
+</code></pre>
+<ul>
+<li><strong>8</strong>：正常分布下几乎不可能达到，达到即说明 hash 极度异常，必须用红黑树兜底（防哈希碰撞攻击把查询退化成 O(n)）；</li>
+<li><strong>6</strong>：与 8 留缓冲带，避免在临界点反复"树化↔退化"抖动（若阈值是 7，增删一个元素就触发一次结构转换）；</li>
+<li><strong>64</strong>：容量 &lt; 64 时优先扩容（分散冲突）而非树化——小表树化内存收益差。</li>
+</ul>
+<p><strong>TreeNode 保留双向链表的原因</strong>：① 退化时直接沿链表 O(n) 转回普通节点，无需中序遍历；② 删除中间节点维护 prev 指针 O(1)。</p>
+<p><strong>不可比较 key 的红黑树</strong>：比较顺序 <code>Comparable → 类名 → System.identityHashCode</code>（<code>tieBreakOrder</code>），保证通用性。</p>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>初始化容量公式</strong>：<code>Map&lt;String, Object&gt; map = new HashMap&lt;&gt;((int)(expected / 0.75) + 1)</code>。</li>
+<li><strong>key 设计</strong>：不可变对象做 key（缓存 hash）；正确实现 <code>hashCode</code>/<code>equals</code>；字符串 key 优先。</li>
+</ul>
+<pre><code class="language-java">// 哈希碰撞攻击防护：自定义 key 时保证 hashCode 分散
+public final class BizKey {
+    private final String bizType;
+    private final long bizId;
+
+    public BizKey(String bizType, long bizId) {
+        this.bizType = bizType;
+        this.bizId = bizId;
+    }
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BizKey)) return false;
+        BizKey other = (BizKey) o;
+        return bizId == other.bizId &amp;&amp; Objects.equals(bizType, other.bizType);
+    }
+
+    @Override public int hashCode() {
+        return Objects.hash(bizType, bizId);
+    }
+}
+</code></pre>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ol>
+<li><strong>JDK7 并发扩容死循环</strong>：头插法 + 并发扩容导致环形链表，<code>get</code> 死循环（CPU 100%）。JDK8 尾插法已修复死循环，但<strong>并发 put 仍可能丢数据</strong>——<code>HashMap</code> 始终非线程安全。</li>
+<li><strong>hashCode 返回常量</strong>：所有 key 落同一桶，JDK8 靠红黑树把查询控制在 O(log n)，但插入/内存仍劣化；恶意构造的 key（碰撞攻击）会让服务 CPU 飙高。</li>
+<li><strong>resize 阈值误解</strong>：容量 16、负载因子 0.75 → 第 13 个元素触发扩容；树化还要看容量是否 ≥ 64，否则先扩容。</li>
+<li><strong><code>key</code> 可变</strong>：put 后修改参与 hash 的字段，再 get 找不到（hash 变了，桶位置错）。</li>
+</ol>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>JDK1.8 相比 1.7</strong>：尾插法（解决死循环）、1 次扰动（<code>h ^ h&gt;&gt;&gt;16</code>，红黑树降低对 hash 质量依赖）、高低位分离扩容（免重算 hash）。</li>
+<li><strong>大 Map 调优</strong>：预设容量减少 resize；<code>-XX:+UseCompressedOops</code> 下对象头压缩让指针 4 字节；超高并发场景评估 <code>ConcurrentHashMap</code>。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>JDK 1.7</th>
+<th>JDK 1.8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>结构</td>
+<td>数组+链表</td>
+<td>数组+链表+红黑树</td>
+</tr>
+<tr>
+<td>插入</td>
+<td>头插法（并发死循环）</td>
+<td>尾插法（安全）</td>
+</tr>
+<tr>
+<td>hash</td>
+<td>4 次扰动</td>
+<td>1 次扰动</td>
+</tr>
+<tr>
+<td>扩容</td>
+<td>全量 rehash</td>
+<td>高低位分离</td>
+</tr>
+<tr>
+<td>查询最坏</td>
+<td>O(n)</td>
+<td>O(log n)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="queue-deque">模块四：Queue / Deque</h2>
+<h3 id="1_3">1. 核心原理</h3>
+<ul>
+<li><code>Queue</code>：FIFO，<code>offer/poll/peek</code>（失败返回 null/false，不抛异常——<strong>生产首选</strong>）；<code>add/remove/element</code> 失败抛异常。</li>
+<li><code>Deque</code>：双端队列（<code>ArrayDeque</code> 循环数组实现 / <code>LinkedList</code>），可当头尾栈/队列用。</li>
+<li><code>PriorityQueue</code>：二叉堆，默认小顶堆，<code>offer/poll</code> O(log n)；<strong>非线程安全</strong>。</li>
+<li><code>BlockingQueue</code>：<code>ArrayBlockingQueue</code>（有界数组）/<code>LinkedBlockingQueue</code>（可选有界）/<code>PriorityBlockingQueue</code>/<code>DelayQueue</code>（延迟任务）/<code>SynchronousQueue</code>（不存元素，直接手交手，<code>ThreadPoolExecutor</code> 的 <code>Executors.newCachedThreadPool()</code> 在用）。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<ul>
+<li><strong>线程池任务队列</strong>：<code>ThreadPoolExecutor</code> 默认 <code>LinkedBlockingQueue</code> <strong>无界</strong> → 高并发下任务堆积 OOM。生产定制：有界队列 + <code>CallerRunsPolicy</code> + 监控队列深度告警。</li>
+<li><strong>生产者-消费者解耦</strong>：本地缓冲用 <code>ArrayBlockingQueue</code>（有界天然限流）；跨进程用 MQ。</li>
+</ul>
+<pre><code class="language-java">// 生产级线程池定制（有界队列 + 拒绝策略 + 监控）
+ThreadPoolExecutor executor = new ThreadPoolExecutor(
+        Runtime.getRuntime().availableProcessors(),
+        Runtime.getRuntime().availableProcessors() * 2,
+        60L, TimeUnit.SECONDS,
+        new ArrayBlockingQueue&lt;&gt;(1000),
+        new NamedThreadFactory(&quot;biz-worker-&quot;),
+        new ThreadPoolExecutor.CallerRunsPolicy());
+// 注册 gauge：executor.getQueue().size() / getActiveCount() / getCompletedTaskCount()
+</code></pre>
+<h3 id="3_3">3. 踩坑规避</h3>
+<ul>
+<li><code>PriorityQueue</code> 的 <code>iterator()</code> <strong>不保证顺序</strong>，要排序输出得 <code>poll</code> 或先 <code>toArray</code> + <code>Arrays.sort</code>。</li>
+<li><code>ArrayDeque</code> 不支持 null 元素。</li>
+<li><code>BlockingQueue</code> 的 <code>add</code> 满时抛 <code>IllegalStateException</code>，用 <code>offer</code> 系。</li>
+</ul>
+<h3 id="4_3">4. 优化进阶</h3>
+<ul>
+<li>有界队列深度 = 突发流量缓冲能力，配合压测标定（队列深度 × 单任务处理时长 × 消费速率 &lt; 生产流量）。</li>
+<li><code>SynchronousQueue</code> 适合"任务轻、要求立即执行"的场景；<code>DelayedWorkQueue</code> 适合定时关闭超时订单。</li>
+</ul>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>队列</th>
+<th>有界</th>
+<th>阻塞</th>
+<th>排序</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ArrayDeque</td>
+<td>是</td>
+<td>否</td>
+<td>否</td>
+<td>单机栈/队列</td>
+</tr>
+<tr>
+<td>PriorityQueue</td>
+<td>是</td>
+<td>否</td>
+<td>是</td>
+<td>任务优先级调度</td>
+</tr>
+<tr>
+<td>ArrayBlockingQueue</td>
+<td>是</td>
+<td>是</td>
+<td>否</td>
+<td>线程池队列</td>
+</tr>
+<tr>
+<td>LinkedBlockingQueue</td>
+<td>可选</td>
+<td>是</td>
+<td>否</td>
+<td>大吞吐生产者消费者</td>
+</tr>
+<tr>
+<td>DelayQueue</td>
+<td>是</td>
+<td>是</td>
+<td>到期时间</td>
+<td>延迟任务、超时关单</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="concurrenthashmap-jdk17-18">模块五：ConcurrentHashMap 深度（JDK1.7 → 1.8）</h2>
+<h3 id="1_4">1. 核心原理</h3>
+<ul>
+<li><strong>设计目标</strong>：线程安全 + 高并发，锁粒度尽可能细。Hashtable 用全表锁（put 时读写全阻塞）被淘汰；</li>
+<li><strong>JDK1.7 分段锁（Segment）</strong>：表分 16 段，每段继承 <code>ReentrantLock</code> 独立加锁 → 支持 16 线程并发写不同段；</li>
+<li><strong>JDK1.8 节点锁</strong>：摒弃 Segment，改为 <strong>Node 数组 + CAS + synchronized（锁桶首节点）</strong>：</li>
+<li>桶为空 → <code>CAS</code>（<code>casTabAt</code>）无锁插入；</li>
+<li>桶非空 → <code>synchronized (f)</code> 只锁<strong>当前桶首节点</strong>，不同桶完全无锁；</li>
+<li><code>putVal</code> 四场景：未初始化（<code>initTable</code>，sizeCtl CAS 竞争）/ 空桶 CAS / <code>hash==MOVED</code> 协助扩容（<code>helpTransfer</code>）/ 加锁插入；</li>
+<li>扩容：每线程分 ≥16 桶任务，<code>transferIndex</code> CAS 分配，已迁移桶挂 <strong>ForwardingNode</strong>；</li>
+<li><strong>Node 的 <code>val</code>/<code>next</code> 用 volatile</strong>：保证读线程无需锁即可看到最新值 → <strong>get 几乎无锁</strong>。</li>
+</ul>
+<h3 id="2_4">2. 生产落地</h3>
+<ul>
+<li><strong>并发 Map 默认选 CHM</strong>：<code>ConcurrentHashMap&lt;String, AtomicLong&gt;</code> 计数器模式：</li>
+</ul>
+<pre><code class="language-java">// 高并发计数：computeIfAbsent 原子初始化 + incrementAndGet 原子自增
+ConcurrentHashMap&lt;String, AtomicLong&gt; counters = new ConcurrentHashMap&lt;&gt;();
+public void record(String module) {
+    counters.computeIfAbsent(module, k -&gt; new AtomicLong()).incrementAndGet();
+}
+</code></pre>
+<ul>
+<li><strong>size 的语义</strong>：CHM 的 <code>size()</code> 是<strong>近似值</strong>（高并发下无绝对准确的计数，需准确计数用 <code>AtomicLong</code>/<code>mappingCount</code> 或业务统计表）；</li>
+<li><strong>null 禁止</strong>：key/value 都不能为 null（<code>null</code> 与"不存在"在并发下无法区分，会抛 NPE）。</li>
+</ul>
+<h3 id="3_4">3. 踩坑规避</h3>
+<ol>
+<li><strong>复合操作非原子</strong>：<code>if (!map.containsKey(k)) map.put(k, v)</code> 是两次操作，并发下重复 put。用 <code>putIfAbsent</code> / <code>computeIfAbsent</code> / <code>compute</code>（整体原子）；</li>
+<li><strong>迭代器弱一致</strong>：<code>keySet()</code> 遍历反映某一时刻状态，不抛 CME 但不保证全量——遍历期间要绝对一致快照，先 <code>copyOf</code> 再遍历；</li>
+<li><strong>JDK1.8 仍有并发上限</strong>：单桶冲突时退化为串行；热 key（同 key 高频写）需业务层打散（key 加后缀分段）；</li>
+<li><strong>弱引用 key 误用</strong>：CHM 不支持弱引用 key（用 <code>Collections.synchronizedMap(new WeakHashMap&lt;&gt;())</code> 场景极少，评估 Guava Cache）。</li>
+</ol>
+<h3 id="4_4">4. 优化进阶</h3>
+<ul>
+<li><strong>JDK1.8 为何用 synchronized 不用 ReentrantLock</strong>：① 桶级锁冲突概率低，synchronized 大多停在前两态（JDK15 前）；② JVM 锁消除/锁粗化/自适应自旋优化；③ 每个节点继承 ReentrantLock 内存开销大，synchronized 靠对象头 Mark Word 零额外对象；④ 自动释放无死锁风险；</li>
+<li><strong>树化与 HashMap 同参数</strong>：链表 ≥8 且容量 ≥64 转红黑树（TreeBin 包装，<code>lockState</code> 管读写等待）；</li>
+<li><strong>热 key 优化</strong>：本地缓存挡一层 + CHM 分段 key，把单桶竞争降为多桶。</li>
+</ul>
+<h3 id="5_4">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>JDK 1.7</th>
+<th>JDK 1.8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>锁策略</td>
+<td>Segment 分段锁（ReentrantLock）</td>
+<td>桶首节点 synchronized + CAS</td>
+</tr>
+<tr>
+<td>锁粒度</td>
+<td>段级（默认 16）</td>
+<td>桶级（= 数组长度）</td>
+</tr>
+<tr>
+<td>并发度</td>
+<td>≤16</td>
+<td>理论 = 桶数</td>
+</tr>
+<tr>
+<td>读性能</td>
+<td>段锁</td>
+<td>volatile 无锁读</td>
+</tr>
+<tr>
+<td>冲突解决</td>
+<td>链表</td>
+<td>链表 + 红黑树</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>Segment 开销</td>
+<td>更紧凑</td>
+</tr>
+</tbody>
+</table>
+<p><strong>与 Hashtable 对比</strong>：Hashtable 全表 synchronized（读写互斥，已淘汰）；CHM 读无锁、写锁桶。
+<strong>与 synchronizedMap 对比</strong>：<code>Collections.synchronizedMap</code> 任一操作锁全表，仅适合低并发。</p>
+<hr />
+<h2 id="_2">待补充清单</h2>
+<ul>
+<li><code>LinkedHashMap</code> LRU 实现（<code>accessOrder</code> + <code>removeEldestEntry</code>）→ 随缓存专题补充</li>
+<li><code>Collections.synchronizedMap</code> / <code>ConcurrentSkipListMap</code>（跳表，高并发有序 Map）→ 随并发容器专题补充</li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

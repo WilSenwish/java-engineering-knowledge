@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>03.3 高并发方案设计精选</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details open><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="active" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="033">03.3 高并发方案设计精选</h1>
+<blockquote>
+<p><strong>所属知识域</strong>：域3 分布式与高可用架构（业务方案案例归口 <a href="../07-business-cases/07.1-projects.html">07.1</a>）
+<strong>加工来源</strong>：javaup《秒杀系统架构与库存扣减设计》《如何合理设计高可用的系统》（sources/javaup/solution-design/）
+<strong>关联文档</strong>：<a href="03.2-microservices.html">03.2 微服务架构工程化</a>（限流/熔断/隔离治理）、<a href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a>（原子扣减/缓存三难题）、<a href="../01-java-core/01.3-concurrency.html">01.3 并发编程</a>（线程池隔离）</p>
+</blockquote>
+<hr />
+<h2 id="_1">模块一 · 秒杀系统：流量分层过滤与库存扣减</h2>
+<h3 id="1">1. 核心原理</h3>
+<p>秒杀的数学本质：<strong>把 N 倍于容量的瞬时流量，在到达最终存储前逐层削减</strong>。核心理念是"层层过滤"——每一层只放行它有把握处理的量，绝大多数请求在到达核心服务前就被拒绝。</p>
+<p><strong>超卖根源</strong>：并发下"查库存 → 判断充足 → 扣减"三步非原子——两个线程同时读到剩余 1 件，均通过判断，均扣减成功，库存变 -1。<strong>对策方向只有两个：把三步合成一个原子操作（DB 乐观锁 / Redis 原子命令），或把并行串行化（队列削峰 + 异步下单）</strong>。</p>
+<h3 id="2">2. 生产落地</h3>
+<p><strong>五层过滤架构</strong>：</p>
+<pre><code class="language-text">① 客户端层   ：前端随机丢弃，服务端压力大时直接返回&quot;系统繁忙&quot;
+② CDN        ：秒杀页静态资源全部 CDN 化，动态接口才回源
+③ Nginx      ：IP 限流（单 IP ≤5 次/秒）、黑白名单、连接数限制
+④ 网关层     ：Sentinel 动态限流（按实时负载调阈值）+ 业务前置校验
+               （登录态/活动时间窗口/资格判断）
+⑤ 缓存层     ：热点数据本地缓存（Caffeine）+ Redis 集群双级
+</code></pre>
+<p><strong>热点数据三板斧</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>做法</th>
+<th>解决</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据拆分</td>
+<td>1000 件库存拆 10 个子库存各 100，请求均匀路由</td>
+<td>单 Key 热点</td>
+</tr>
+<tr>
+<td>多级缓存预热</td>
+<td>活动前 Redis 预热 + 本地缓存预热</td>
+<td>冷启动击穿</td>
+</tr>
+<tr>
+<td>多副本</td>
+<td>热 Key 在多个 Redis 节点建副本，读扩散</td>
+<td>单节点带宽瓶颈</td>
+</tr>
+</tbody>
+</table>
+<p><strong>库存扣减方案矩阵</strong>（详见关联文档）：</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>原子性保证</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DB 乐观锁 <code>UPDATE stock SET n=n-1 WHERE id=? AND n&gt;0</code></td>
+<td>单行更新原子</td>
+<td>中低并发</td>
+</tr>
+<tr>
+<td>Redis <code>DECR</code>/Lua 预扣 + MQ 异步落库</td>
+<td>单线程原子 + 最终一致</td>
+<td>高并发主流</td>
+</tr>
+<tr>
+<td>库存分段 + 分段锁</td>
+<td>分段内串行</td>
+<td>极端热点</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3">3. 踩坑规避</h3>
+<ul>
+<li><strong>缓存与 DB 库存不一致</strong>：Redis 预扣成功但订单创建失败——必须回补库存（补偿消息/对账），否则"少卖"；</li>
+<li><strong>限流阈值一刀切</strong>：预热期/进行期/结束期容量不同——阈值应可动态调整（Sentinel 热点参数/规则推送）；</li>
+<li><strong>前端按钮置灰依赖服务端</strong>：服务端超时后前端自动恢复可点，用户疯狂重点——置灰需客户端定时器强制保持；</li>
+<li><strong>同步下单直连 DB</strong>：瞬时流量全部打到 MySQL，连接池打满引发雪崩——入口必须排队（MQ/令牌桶）。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<p><strong>令牌桶预发放</strong>：活动前发放限量令牌（= 库存数），抢购转化为"抢令牌"——无令牌请求在任何计算前被拒，把业务判断前置到内存级。</p>
+<p><strong>库存分段扣减 + 合并落库</strong>：子库存扣减成功先记分段流水，异步任务合并写 DB 总库存，降低单行竞争。</p>
+<p><strong>压测基线</strong>：按目标 QPS × 安全系数（3~5 倍）设计各层容量，Nginx/网关/服务/DB 每层都要有压测报告——最短板决定系统容量。</p>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>一致性</th>
+<th>复杂度</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DB 乐观锁直扣</td>
+<td>强一致</td>
+<td>低</td>
+<td>内部秒杀/低并发</td>
+</tr>
+<tr>
+<td>Redis 预扣 + 异步下单</td>
+<td>最终一致</td>
+<td>中</td>
+<td>互联网秒杀主流</td>
+</tr>
+<tr>
+<td>令牌桶 + 全异步</td>
+<td>最终一致</td>
+<td>高</td>
+<td>超级热点（整点抢购）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块二 · 雪崩防护：高可用系统设计</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<p><strong>雪崩传导链</strong>（真实故障复盘）：流量 10 倍 → 评论服务变慢 → 详情页调用线程全部阻塞等待 → 详情服务线程池满 → 推荐服务调详情超时 → 首页不可用，全程不到 5 分钟。</p>
+<p><strong>关键洞察</strong>：雪崩不是被"压垮"的，是被"等垮"的——<strong>同步阻塞型调用是传导介质</strong>。一个服务慢 3 秒，上游线程就被占 3 秒，线程池耗尽后，上游对它的上游也变成慢服务。防护的核心是<strong>切断传导介质</strong>（超时/隔离/熔断）+ <strong>入口削减流量</strong>（限流）+ <strong>提供降级出口</strong>（兜底）。</p>
+<p><strong>可用性度量</strong>："几个 9"——99.9%（年停机 8.76h）/ 99.99%（52.6min）/ 99.999%（5.26min）。</p>
+<h3 id="2_1">2. 生产落地</h3>
+<p><strong>防护四层矩阵</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>手段</th>
+<th>作用点</th>
+<th>典型实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>超时</td>
+<td>切断等待</td>
+<td>Feign/HTTP 连接/读取超时必须显式设置，且<strong>下游超时 &lt; 上游超时</strong></td>
+</tr>
+<tr>
+<td>限流</td>
+<td>入口削峰</td>
+<td>Sentinel 网关流控（QPS/线程数/热点参数）、Nginx limit_req</td>
+</tr>
+<tr>
+<td>隔离</td>
+<td>故障不扩散</td>
+<td>线程池隔离（每个依赖独立池）/信号量隔离（低延迟场景）</td>
+</tr>
+<tr>
+<td>熔断</td>
+<td>快速失败</td>
+<td>熔断器状态机：Closed→Open（错误率/慢调用率超阈值）→Half-Open 试探恢复</td>
+</tr>
+<tr>
+<td>降级</td>
+<td>兜底体验</td>
+<td>返回缓存值/默认值/静态页，静默失败优于空白错误</td>
+</tr>
+</tbody>
+</table>
+<p><strong>舱壁模式（Bulkhead）</strong>：线程池按下游依赖划分（评论服务池、推荐服务池互不侵占）——一个依赖故障最多耗尽自己的池，不拖垮整个 Tomcat 线程。</p>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><strong>无超时或超时过长</strong>：下游挂了上游线程无限等——所有外部调用必须设超时，且逐层递减；</li>
+<li><strong>重试风暴</strong>：超时后无脑重试，把半死服务彻底打死——重试必须有限次 + 退避 + 仅对幂等操作；</li>
+<li><strong>熔断阈值不合理</strong>：错误率 1% 就熔断（抖动误熔）/50% 才熔断（慢半拍）——按 SLO 反推，配合半开状态试探；</li>
+<li><strong>降级链路也走故障依赖</strong>：降级逻辑去查同一个挂掉的 Redis——降级必须是本地缓存/静态数据；</li>
+<li><strong>健康检查误导</strong>：进程活着但线程池全满—— readiness 探针要检查核心依赖连通性，不只查进程。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<p><strong>容量水位自动化</strong>：按 CPU/线程池利用率/队列深度多维水位自动扩容 + 限流阈值联动（HPA + 自适应流控）。</p>
+<p><strong>故障演练（Chaos Engineering）</strong>：定期注入下游延迟/错误/进程杀死，验证熔断降级是否真生效——没演练过的预案等于没有预案。</p>
+<p><strong>异步化解耦</strong>：非核心链路（通知、积分、统计）全面 MQ 化，主链路只做最少的事——从根本上减少同步等待面。</p>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>防护组件</th>
+<th>形态</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sentinel</td>
+<td>流量治理全家桶</td>
+<td>动态规则推送、热点参数限流、系统自适应保护，国产主流</td>
+</tr>
+<tr>
+<td>Resilience4j</td>
+<td>轻量函数式</td>
+<td>与 Spring Cloud Circuit Breaker 集成，代码简洁</td>
+</tr>
+<tr>
+<td>Hystrix</td>
+<td>线程隔离鼻祖</td>
+<td><strong>已停更</strong>，仅遗留系统参考——新项目不选</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">模块四 · 方案设计其余专题（按已返回正文）</h2>
+<blockquote>
+<p>加工来源：javaup <code>/architecture/solution-design/</code> 其余篇。多篇后半为动态加载，下面只写抓取时页面里已经出现的判断，不补未返回的步骤。</p>
+</blockquote>
+<h3 id="1_2">1. 核心原理</h3>
+<table>
+<thead>
+<tr>
+<th>题</th>
+<th>已见到的结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>高并发计数</td>
+<td>热点是同一行 UPDATE。QPS 低可直接数据库行锁；上去之后把累加挪到 Redis</td>
+</tr>
+<tr>
+<td>消息乱序</td>
+<td>Push 实时但会被打满；Pull 由消费者控速；Kafka/RocketMQ 生产用长轮询</td>
+</tr>
+<tr>
+<td>支付与关单并发</td>
+<td>终态（已支付、已取消、已完成、已退款）一旦成立就不可再变</td>
+</tr>
+<tr>
+<td>本地缓存</td>
+<td>ConcurrentHashMap 或 Caffeine；必须有容量上限和淘汰，否则堆被打满</td>
+</tr>
+<tr>
+<td>敏感词</td>
+<td>词库小时 <code>contains</code> 是 O(N×M×L)；词库到万级要换 Trie/DFA（后文未返回）</td>
+</tr>
+<tr>
+<td>短码</td>
+<td>给人看的码用 Base58，去掉 0/O/I/l；7 位约 2.2 万亿</td>
+</tr>
+<tr>
+<td>分库二次扩容</td>
+<td>基因法把分片信息放进 ID 后，单表再次撑满才需要二次扩容（步骤页未展开）</td>
+</tr>
+<tr>
+<td>RPC</td>
+<td>注册中心、Netty、序列化、动态代理、负载均衡五件套</td>
+</tr>
+<tr>
+<td>Feed</td>
+<td>时间线、推荐、混合；推模式先被点名（拉和推拉结合的后文未返回）</td>
+</tr>
+<tr>
+<td>大规模推送</td>
+<td>批次任务表和投递明细分开，千万用户靠拆批和限速，不靠一条 SQL</td>
+</tr>
+<tr>
+<td>Kafka 积压</td>
+<td>生产快过消费。常见是下游慢、实例数少于分区、每条消息新建连接</td>
+</tr>
+<tr>
+<td>接口变慢</td>
+<td>先用 Arthas <code>trace</code> 看方法耗时，示例里瓶颈在第三方预支付</td>
+</tr>
+<tr>
+<td>流量统计</td>
+<td>PV 按次、UV 按人、VV 按访问段；精确 UV 可用 Redis Set（HyperLogLog 后文未返回）</td>
+</tr>
+<tr>
+<td>消息队列本身</td>
+<td>Broker 混合存储，顺序写磁盘才能接近内存随机写</td>
+</tr>
+<tr>
+<td>认证</td>
+<td>OAuth2 四角色；授权码给 Web，客户端凭证给服务间调用。隐式模式和密码模式不作为新系统默认</td>
+</tr>
+<tr>
+<td>流量防护</td>
+<td>先判断流量是不是正常突发，再决定扩容还是丢掉（后文未展开）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="2_2">2. 生产落地</h3>
+<p>计数和 UV 先放 Redis，定期合并回库，避免连接池被同一行锁占满。支付回调和超时关单用条件更新：<code>WHERE status = 待支付</code>，更新行数为 0 就按终态处理，不覆盖已支付。推送按 <code>push_batch</code> 调度，明细表只记这一批的到达情况。第三方调用设超时，用 trace 确认慢在哪一次 RPC，再熔断，不把线程堵在对方。</p>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ul>
+<li>给人看的短码用 Base62，0 和 O 会搞混。</li>
+<li>授权码和客户端凭证以外的 OAuth 模式拿来做新的浏览器登录。</li>
+<li>消费者数少于分区数还在加线程，分区没人认领。</li>
+<li>隐藏索引或计数缓存当强一致余额用。</li>
+</ul>
+<h3 id="4_2">4. 优化进阶</h3>
+<p>词库大了再上 DFA。分片二次扩容先冻结路由再迁数据，页内步骤未展开，不能按想象补迁移脚本。Feed 的推、拉取舍以页面后文为准，当前只确认推模式存在写放大。</p>
+<h3 id="5_2">5. 选型对比</h3>
+<p>Seata 四种模式的取舍见 <a href="03.1-distributed-theory.html">03.1</a> 的补充模块，不在本表重复。</p>
+<hr />
+<h2 id="_4">待补充清单</h2>
+<ul>
+<li>方案设计 14 篇：<strong>已按抓取到的正文写入模块四</strong>。标注「后文未返回」的段落不再臆造</li>
+<li>压测专篇：sitemap 中无独立 JMeter/影子库文章，不单写</li>
+<li>K8s 弹性 → <a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 模块四</a></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

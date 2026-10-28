@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>02.1 MySQL 工程化</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details open><summary>域2 · 后端组件</summary><div class='group'><a class="active" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="021-mysql">02.1 MySQL 工程化</h1>
+<blockquote>
+<p>知识域：域2 后端技术组件工程化
+加工来源：sources/javaguide/database-mysql/mysql-questions-01.md
+关联文档：<a href="02.2-redis.html">02.2 Redis</a> / <a href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论</a>（分库分表）</p>
+</blockquote>
+<h2 id="_1">模块一：架构与存储引擎</h2>
+<h3 id="1">1. 核心原理</h3>
+<ul>
+<li><strong>分层架构</strong>：连接层（连接处理/鉴权）→ 服务层（解析器/优化器/缓存）→ 存储引擎层（InnoDB/MyISAM，插件式，<strong>引擎层才真正操作文件</strong>）。</li>
+<li><strong>InnoDB vs MyISAM</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>InnoDB</th>
+<th>MyISAM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>事务</td>
+<td>支持（ACID）</td>
+<td>不支持</td>
+</tr>
+<tr>
+<td>行锁/表锁</td>
+<td>行锁 + MVCC</td>
+<td>表锁</td>
+</tr>
+<tr>
+<td>外键</td>
+<td>支持</td>
+<td>不支持</td>
+</tr>
+<tr>
+<td>崩溃恢复</td>
+<td>redo/undo</td>
+<td>无</td>
+</tr>
+<tr>
+<td>聚簇索引</td>
+<td>有（数据即索引）</td>
+<td>无（索引与数据分离）</td>
+</tr>
+<tr>
+<td>count(*)</td>
+<td>遍历统计</td>
+<td>内置计数器直接返回</td>
+</tr>
+<tr>
+<td>场景</td>
+<td><strong>绝大多数业务</strong></td>
+<td>只读/历史归档</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Buffer Pool</strong>：InnoDB 以 16KB 页为单位缓存数据页/索引页/undo/自适应哈希；<code>innodb_buffer_pool_size</code> 建议物理内存 50%~75%（专用 DB 服务器）。</li>
+</ul>
+<h3 id="2">2. 生产落地</h3>
+<ul>
+<li><strong>连接池参数（HikariCP）</strong>：<code>maximumPoolSize</code> 按 <code>(CPU核数 × 2) + 有效磁盘数</code> 起步压测标定；<code>connectionTimeout=3000</code>、<code>maxLifetime &lt; MySQL</code>wait_timeout<code>`（1800s）、</code>connectionTestQuery=SELECT 1<code>或</code>keepalive`。</li>
+<li><strong>字符集</strong>：统一 <code>utf8mb4</code>（真 UTF-8，4 字节；<code>utf8</code> 是 MySQL 的 3 字节阉割版，emoji 存不下）+ 排序规则 <code>utf8mb4_general_ci</code>（或 <code>0900_ai_ci</code> 区分大小写需求场景评估）。</li>
+<li><strong>基础规范</strong>：所有表 InnoDB、主键 <code>bigint</code>（雪花/发号器）、<code>NOT NULL</code> + 默认值、每表必备 <code>create_time</code>/<code>update_time</code>。</li>
+</ul>
+<pre><code class="language-sql">-- 生产建表示范（规范落地）
+CREATE TABLE `t_order` (
+  `id` bigint unsigned NOT NULL COMMENT '雪花ID',
+  `user_id` bigint unsigned NOT NULL COMMENT '用户ID',
+  `amount` decimal(18,2) NOT NULL COMMENT '金额(分→元, 禁止float)',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0待付 1已付 2取消',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_create` (`user_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
+</code></pre>
+<h3 id="3">3. 踩坑规避</h3>
+<ol>
+<li><strong>隐式类型转换导致索引失效</strong>：<code>WHERE phone = 13800000000</code>（int 列与 string 比，MySQL 8 前）/ <code>WHERE varchar_col = 123</code> → 全表扫描。<strong>保证查询条件类型与列类型一致</strong>。</li>
+<li><strong>前导模糊查询</strong>：<code>LIKE '%abc'</code> 无法用 B+树索引；<code>LIKE 'abc%'</code> 可用。海量文本搜索上 Elasticsearch。</li>
+<li><strong>函数/运算包裹索引列</strong>：<code>WHERE DATE(create_time)='2026-10-18'</code> 索引失效 → 改范围查询 <code>create_time &gt;= '2026-10-18' AND create_time &lt; '2026-10-19'</code>。</li>
+<li><strong>深分页</strong>：<code>LIMIT 100000, 10</code> 要扫描 100010 行丢前 10 万行。优化：延迟关联（子查询先查 ID）+ 游标（<code>WHERE id &lt; last_max_id LIMIT 10</code>）。</li>
+<li><strong>大事务</strong>：一次事务操作几万行 → undo 膨胀、锁持有久、主从延迟。拆批（每批 500~1000 行，批间休眠）。</li>
+<li><strong><code>utf8mb4</code> 索引长度超限</strong>：单列索引 191 字符（3072 字节限制）；超长字段用前缀索引或 Hash 列。</li>
+</ol>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong>覆盖索引</strong>：查询列全部在索引中 → 不回表（Extra 出现 <code>Using index</code>）。高频查询按此设计联合索引。</li>
+<li><strong>索引下推（ICP，MySQL 5.6+）</strong>：<code>WHERE age &gt; 18 AND name = 'x%'</code>，联合索引 <code>(name, age)</code> 在引擎层先过滤 age 再回表。</li>
+<li><strong>MRR + Batched Key Access</strong>：离散 IO 转顺序 IO，适合范围扫描多的场景。</li>
+<li><strong>执行计划必读字段</strong>：<code>type</code>（至少 range，杜绝 ALL）、<code>key</code>（实际用的索引）、<code>rows</code>（扫描行数）、<code>Extra</code>（Using filesort/temporary 是大坑）。</li>
+</ul>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>适用</th>
+<th>注意</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单库单表</td>
+<td>数据量 &lt; 500 万行、QPS &lt; 2000</td>
+<td>先别急着分库分表</td>
+</tr>
+<tr>
+<td>读写分离</td>
+<td>读远大于写</td>
+<td>主从延迟导致"写完读不到"（读主库兜底）</td>
+</tr>
+<tr>
+<td>分库分表（ShardingSphere）</td>
+<td>单表 &gt; 千万级</td>
+<td>分片键选择 &gt; 技术实现；跨片 JOIN/分页/ID 全局唯一</td>
+</tr>
+<tr>
+<td>NewSQL（TiDB/OceanBase）</td>
+<td>海量 + 强一致 + 弹性</td>
+<td>运维成本、生态成熟度评估</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块二：索引原理与优化</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>B+树（InnoDB）</strong>：非叶子节点只存 key（一页存更多索引 → 树高 3~4 层即可支撑千万级）；叶子节点双向链表（范围查询高效）。<strong>树高决定 IO 次数</strong>，3 层 B+树 ≈ 3 次磁盘 IO。</li>
+<li><strong>聚簇索引 vs 二级索引</strong>：聚簇索引叶子 = 整行数据（按主键组织）；二级索引叶子 = 主键值 → 回表查聚簇。<code>SELECT *</code> 走二级索引要回表，<strong>覆盖索引免回表</strong>。</li>
+<li><strong>联合索引最左前缀</strong>：<code>(a, b, c)</code> 可用于 <code>a</code>、<code>a,b</code>、<code>a,b,c</code>；跳过多列失效；<code>a=1 AND c=3</code> 只用 a。范围列之后的列无法用于索引定位（但可参与 ICP 过滤）。</li>
+<li><strong>索引下推</strong>：见模块一。</li>
+<li><strong>Hash 索引</strong>：Memory 引擎/自适应哈希（InnoDB 内部），等值查询 O(1) 但不支持范围/排序。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>索引设计三问</strong>（建索引前）：① 有没有 SQL 支撑（<code>EXPLAIN</code>）② 区分度高不高（<code>COUNT(DISTINCT col)/COUNT(*)</code> &gt; 0.3 才值得）③ 是否冗余（<code>(a,b)</code> 与 <code>(a,b,c)</code> 只需后者）。</li>
+<li><strong>EXPLAIN 实战</strong>：关注 <code>type</code>（const &gt; eq_ref &gt; ref &gt; range &gt; index &gt; ALL）、<code>Extra</code>。</li>
+</ul>
+<pre><code class="language-sql">EXPLAIN SELECT id, user_id FROM t_order
+WHERE user_id = 123 AND create_time &gt;= '2026-10-01';
+-- 期望: type=ref/range, key=idx_user_create, Extra=Using index(覆盖索引)
+</code></pre>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><strong>索引不是越多越好</strong>：每个索引 = 一棵 B+树，写放大 + 优化器选错索引（<code>ANALYZE TABLE</code> 刷新统计信息，或 <code>FORCE INDEX</code> 干预）。</li>
+<li><strong>隐式转换 + 排序规则不一致</strong>：JOIN 两表字符集/排序规则不同（<code>utf8mb4_general_ci</code> vs <code>utf8mb4_0900_ai_ci</code>）→ 索引失效。</li>
+<li><strong><code>OR</code> 导致索引失效</strong>：<code>a=1 OR b=2</code> 若 b 无索引 → 全表；改 <code>UNION ALL</code> 分别走索引。</li>
+<li><strong><code>IN</code> 列表过长</strong>：优化器可能改走全表；超 1000 项分批或用临时表 JOIN。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>慢查询治理闭环</strong>：<code>slow_query_log=ON</code> + <code>long_query_time=1</code> + <code>pt-query-digest</code> 聚合 → 按 <code>总耗时</code>（不是次数）排序治理 → <code>EXPLAIN</code> 验证 → 线上对比 RT。</li>
+<li><strong>Count 优化</strong>：<code>COUNT(*)</code> InnoDB 也要扫（无 MyISAM 计数器）；近似值用 <code>SHOW TABLE STATUS</code> / <code>EXPLAIN</code> 的 rows；精确值走缓存或汇总表。</li>
+<li><strong>Online DDL</strong>：<code>ALTER TABLE ... ALGORITHM=INPLACE, LOCK=NONE</code>（MySQL 5.6+ 支持大部分 DDL 不锁表），大表变更用 <code>pt-online-schema-change</code>/<code>gh-ost</code>。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>索引类型</th>
+<th>等值</th>
+<th>范围</th>
+<th>排序</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B+树（默认）</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>通用</td>
+</tr>
+<tr>
+<td>Hash</td>
+<td>✅ 最快</td>
+<td>❌</td>
+<td>❌</td>
+<td>精确查找缓存表</td>
+</tr>
+<tr>
+<td>全文索引</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>已被 ES 替代</td>
+</tr>
+<tr>
+<td>前缀索引</td>
+<td>✅</td>
+<td>部分</td>
+<td>❌</td>
+<td>超长字符串降开销</td>
+</tr>
+<tr>
+<td>覆盖索引</td>
+<td>✅ 免回表</td>
+<td>✅</td>
+<td>✅</td>
+<td>高频查询目标形态</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="mvcc">模块三：事务、MVCC 与锁</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>ACID</strong>：原子性（undo log）、一致性（目标）、隔离性（锁 + MVCC）、持久性（redo log，WAL：先写日志再写页）。</li>
+<li><strong>隔离级别与问题</strong>：读未提交（脏读）&lt; 读已提交（RC，不可重复读）&lt; 可重复读（RR，幻读）&lt; 串行化。MySQL 默认 <strong>RR</strong>（PG/SQLServer 默认 RC）。</li>
+<li><strong>MVCC（快照读）</strong>：每行隐藏字段（<code>trx_id</code> 最近修改事务 + <code>roll_pointer</code> undo 链）；ReadView 判定可见版本 → <strong>读写不互斥</strong>，RR 下普通 SELECT 走快照读无锁。</li>
+<li><strong>锁体系</strong>：记录锁（行）、间隙锁（GAP，RR 下防幻读）、临键锁（Next-Key = 记录+间隙，默认加锁单位）、意向锁（表级标记，加速行锁兼容判断）。</li>
+<li><strong>当前读</strong>：<code>SELECT ... FOR UPDATE</code>/<code>LOCK IN SHARE MODE</code>、<code>UPDATE</code>/<code>DELETE</code>/<code>INSERT</code> 读最新版本并加锁。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>事务边界</strong>：<code>@Transactional</code> 只加在<strong>写方法</strong>上（查询方法开事务纯属浪费连接）；<code>rollbackFor = Exception.class</code>（默认只回滚 RuntimeException/Error）；事务内<strong>禁止 RPC/IO 等待</strong>（长事务占连接）。</li>
+<li><strong>RR 下防幻读手段</strong>：间隙锁（默认）+ 唯一索引冲突检查；业务幂等（唯一索引/状态机）双保险。</li>
+<li><strong>乐观锁</strong>：<code>UPDATE t SET stock = stock - 1, version = version + 1 WHERE id = 1 AND version = 5</code>，失败重试（适合低竞争）；悲观锁 <code>SELECT ... FOR UPDATE</code> 适合高竞争短事务。</li>
+</ul>
+<pre><code class="language-java">// 事务规范示例
+@Transactional(rollbackFor = Exception.class, timeout = 3)
+public void createOrder(OrderCreateCmd cmd) {
+    // 1. 本地计算
+    Order order = OrderAssembler.toDO(cmd);
+    // 2. DB 写（无 RPC）
+    orderMapper.insert(order);
+    // 3. 事务消息表/outbox（保证最终一致）
+    outboxMapper.insert(OutboxEvent.of(&quot;ORDER_CREATED&quot;, order.getId()));
+}
+</code></pre>
+<h3 id="3_2">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@Transactional</code> 不生效</td>
+<td>自调用（同类内 <code>this.method()</code> 不走代理）/ 非 public / final / 抛了检查异常未配 rollbackFor</td>
+<td>拆分类/注入自身代理；配 <code>rollbackFor</code></td>
+</tr>
+<tr>
+<td>事务回滚了但日志显示成功</td>
+<td>方法内 try-catch 吞掉异常</td>
+<td>异常必须抛出或在 catch 里手动 <code>TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()</code></td>
+</tr>
+<tr>
+<td>锁等待超时 <code>Lock wait timeout exceeded</code></td>
+<td>死锁/长事务持锁</td>
+<td><code>innodb_lock_wait_timeout=10</code>；缩短事务；固定加锁顺序</td>
+</tr>
+<tr>
+<td>主从数据不一致</td>
+<td>主从延迟 + 强制走从库</td>
+<td>关键读走主库；<code>sec-msr</code> 半同步复制；读己之写策略</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>大事务拆分</strong>：批量 insert 拆批 + 批间提交；定时任务扫全表改状态 → 分批（<code>LIMIT 1000</code> 循环 + 主键推进）。</li>
+<li><strong>死锁预防</strong>：多行更新按主键升序；避免先读后写之间隔太久；<code>innodb_deadlock_detect=OFF</code>（超高并发写场景，靠超时重试）。</li>
+<li><strong>隔离级别降级</strong>：纯读接口把连接切 RC（减少间隙锁）——金融强一致场景除外。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th>脏读</th>
+<th>不可重复读</th>
+<th>幻读</th>
+<th>性能</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RU</td>
+<td>可能</td>
+<td>可能</td>
+<td>可能</td>
+<td>最高</td>
+<td>几乎不用</td>
+</tr>
+<tr>
+<td>RC</td>
+<td>无</td>
+<td>可能</td>
+<td>可能</td>
+<td>高</td>
+<td>互联网默认（多数框架）/只读</td>
+</tr>
+<tr>
+<td>RR</td>
+<td>无</td>
+<td>无</td>
+<td>InnoDB 基本无</td>
+<td>中</td>
+<td><strong>MySQL 默认，金融核心</strong></td>
+</tr>
+<tr>
+<td>Serializable</td>
+<td>无</td>
+<td>无</td>
+<td>无</td>
+<td>低</td>
+<td>强一致账务</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">模块四：性能优化与生产规范</h2>
+<h3 id="1_3">1. 核心原理</h3>
+<ul>
+<li><strong>SQL 执行链</strong>：客户端 → 解析器（语法树）→ 优化器（基于成本的执行计划 CBO，统计信息驱动）→ 执行器 → 引擎。</li>
+<li><strong>慢 SQL 根因分布</strong>（生产经验）：索引缺失/失效（~60%）、深分页/大结果集（~15%）、大事务/锁竞争（~10%）、SQL 写法（隐式转换、函数包裹、<code>SELECT *</code>）（~15%）。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<ul>
+<li><strong>表设计规范</strong>：单表 &lt; 1000 万行预估；冷热分离（归档表）；<code>text/blob</code> 拆附表（主表瘦身）。</li>
+<li><strong>字段规范</strong>：<code>decimal</code> 存金额；<code>tinyint</code> 存状态；IP 存 <code>int unsigned</code>（<code>INET_ATON</code>）或 <code>varchar(39)</code>（IPv6）；时间用 <code>datetime</code>（带时区语义则 UTC + 应用层转换）。</li>
+<li><strong>备份与高可用</strong>：xtrabackup 物理备份 + binlog 增量；主从（一主一从半同步）+ MHA/Orchestrator 故障切换；<strong>定期恢复演练</strong>（备份不可用等于没有）。</li>
+</ul>
+<h3 id="3_3">3. 踩坑规避</h3>
+<ul>
+<li><strong><code>SELECT *</code></strong>：回表数据量放大 + 无法覆盖索引 + 字段变更引发兼容问题。按需取列。</li>
+<li><strong><code>UPDATE ... WHERE</code> 无索引</strong>：行锁升级表锁（RR 下全表间隙锁），阻塞全库写入。</li>
+<li><strong>自增 ID 暴露</strong>：爬虫遍历 + 业务量泄露；用雪花 ID 或号段。</li>
+<li><strong><code>NULL</code> 参与索引</strong>：可索引但语义模糊（"未设置" vs "空"）；显式 <code>NOT NULL DEFAULT</code> 更优。</li>
+</ul>
+<h3 id="4_3">4. 优化进阶</h3>
+<ul>
+<li><strong>读写分离 + 缓存层级</strong>：Cache-Aside（先读缓存→未命中读库→回填）规避脏读（删缓存而非更新缓存）。</li>
+<li><strong>批量写入</strong>：<code>INSERT ... VALUES (...),(...)</code> 多值 / <code>LOAD DATA</code> / 批量 executor（<code>rewriteBatchedStatements=true</code>）。</li>
+<li><strong>分区表</strong>：范围分区按时间归档（<code>PARTITION BY RANGE</code>），DROP 旧分区瞬间回收空间；注意分区键必须含在主键/唯一索引中。</li>
+</ul>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>优化手段</th>
+<th>生效点</th>
+<th>成本</th>
+<th>优先级</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SQL + 索引优化</td>
+<td>单条 SQL</td>
+<td>低</td>
+<td>⭐⭐⭐ 先做</td>
+</tr>
+<tr>
+<td>连接池/慢日志治理</td>
+<td>连接与观测</td>
+<td>低</td>
+<td>⭐⭐⭐ 常开</td>
+</tr>
+<tr>
+<td>缓存</td>
+<td>读路径</td>
+<td>中（一致性成本）</td>
+<td>⭐⭐ 读热点</td>
+</tr>
+<tr>
+<td>读写分离</td>
+<td>架构</td>
+<td>中（延迟）</td>
+<td>⭐⭐ 读扩散</td>
+</tr>
+<tr>
+<td>分库分表</td>
+<td>架构</td>
+<td>高</td>
+<td>⭐ 最后手段</td>
+</tr>
+<tr>
+<td>NewSQL</td>
+<td>架构</td>
+<td>运维成本</td>
+<td>特定场景</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">模块五：索引深度补充（图解来源）</h2>
+<blockquote>
+<p>加工来源：sources/xiaolincoding/mysql/index-interview.md，补全模块二未覆盖的工程细节。</p>
+</blockquote>
+<h3 id="1_4">1. 核心原理（增量知识点）</h3>
+<ul>
+<li><strong>索引四维分类</strong>：数据结构（B+Tree/Hash/Full-text）× 物理存储（聚簇/二级）× 字段特性（主键/唯一/普通/前缀）× 字段个数（单列/联合）；</li>
+<li><strong>范围查询的精确匹配规则</strong>（面试高频）：联合索引最左匹配遇到 <strong><code>&gt;</code>、<code>&lt;</code> 停止匹配</strong>（其后字段无序）；但 <strong><code>&gt;=</code>、<code>&lt;=</code>、<code>BETWEEN</code>、<code>LIKE 'j%'</code> 前缀匹配不停止</strong>——因为边界值处后续字段仍有序（<code>a&gt;=1</code> 被优化器拆成 <code>a=1</code>（ab 有序）+ <code>a&gt;1</code>（b 无序）两段）；</li>
+<li><strong>key_len 判定法</strong>：执行计划 key_len = 用于形成扫描区间的字段字节数之和。int 非 NULL 每字段 4 字节（可 NULL +1）；<code>varchar(30)</code> utf8mb4 = 30×4+2 = 122（变长字段统一按 2 字节计）。<strong>key_len=4 只有 a 走索引，key_len=8 则 a+b 都走</strong>；</li>
+<li><strong>区分度 ≠ 排最前</strong>：区分度是参考因素，但<strong>随机 UUID 作主键 → 页分裂 + 二级索引膨胀</strong>；排序/过滤需求与最左前缀复用优先于纯区分度；</li>
+<li><strong>索引列 NOT NULL</strong>：NULL 使索引统计/比较更复杂（count 省略 NULL 行）+ 行格式至少 1 字节存 NULL 列表。</li>
+</ul>
+<h3 id="2_4">2. 生产落地</h3>
+<ul>
+<li><strong>建索引前三问</strong>：① 有没有 SQL 支撑（EXPLAIN 验证）② 区分度（<code>COUNT(DISTINCT col)/COUNT(*)</code>，性别这类低区分度字段单列索引基本无用——优化器发现占比高直接忽略索引走全表）③ 是否冗余（<code>(a,b)</code> 与 <code>(a,b,c)</code> 只建后者）；</li>
+<li><strong>排序优化</strong>：<code>where status=1 order by create_time</code> → 建 <code>(status, create_time)</code> 联合索引，利用索引有序性<strong>免 filesort</strong>；</li>
+<li><strong>主键设计</strong>：自增主键（追加写无页分裂）+ 主键尽量短（二级索引叶子存主键值）；UUID 作业务唯一键另建二级索引。</li>
+</ul>
+<h3 id="3_4">3. 踩坑规避</h3>
+<ol>
+<li><strong>误以为"用了联合索引=所有字段都走了索引"</strong>：<code>where a&gt;1 and b=2</code> 只 a 走索引定位，b 仅过滤（不回表前不生效）——看 key_len 确认；</li>
+<li><strong>前缀索引局限</strong>：<code>order by</code> 不能用前缀索引、不能作覆盖索引；</li>
+<li><strong>OR 一侧无索引</strong>：<code>a=1 OR b=2</code>（b 无索引）→ 索引失效，改 <code>UNION ALL</code>；</li>
+<li><strong><code>BETWEEN</code> 边界语义</strong>：MySQL 含两端值（<code>&gt;= and &lt;=</code>），有的数据库不含——跨库移植 SQL 时注意。</li>
+</ol>
+<h3 id="4_4">4. 优化进阶</h3>
+<ul>
+<li><strong>索引下推（ICP）判据</strong>：EXPLAIN Extra 出现 <code>Using index condition</code> → 5.6+ 在索引遍历时先过滤再回表；</li>
+<li><strong>自增 vs 非自增主键量化差异</strong>：自增 = 顺序追加（页满开新页）；随机主键 = 插入页中 → 页分裂（数据移动 + 碎片 + 空间利用率降）；</li>
+<li><strong>大表加索引</strong>：<code>ALGORITHM=INPLACE, LOCK=NONE</code>（5.6+）或 <code>pt-osc</code>/<code>gh-ost</code>，避免锁表。</li>
+</ul>
+<h3 id="5-type">5. 选型对比（type 访问方式，效率递增）</h3>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>含义</th>
+<th>生产态度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ALL</td>
+<td>全表扫描</td>
+<td><strong>必须消灭</strong>（小表除外）</td>
+</tr>
+<tr>
+<td>index</td>
+<td>全索引扫描</td>
+<td>避免</td>
+</tr>
+<tr>
+<td>range</td>
+<td>索引范围（&lt; &gt; in between）</td>
+<td><strong>底线</strong></td>
+</tr>
+<tr>
+<td>ref</td>
+<td>非唯一索引</td>
+<td>良好</td>
+</tr>
+<tr>
+<td>eq_ref</td>
+<td>唯一索引（多表 JOIN）</td>
+<td>优秀</td>
+</tr>
+<tr>
+<td>const</td>
+<td>主键/唯一索引 = 常量</td>
+<td>最优</td>
+</tr>
+</tbody>
+</table>
+<p>Extra 判据：<code>Using filesort</code>/<code>Using temporary</code> = 必须优化；<code>Using index</code> = 覆盖索引，优。</p>
+<hr />
+<h2 id="mvcc_1">模块六：事务隔离与 MVCC 深度</h2>
+<h3 id="_5">核心原理</h3>
+<p>四大特性实现分工：<strong>原子性 → undo log；持久性 → redo log；隔离性 → MVCC 或锁；一致性 → 前三者共同保证</strong>。</p>
+<p>MVCC 两个构件：
+- <strong>Read View（读视图）</strong>：m_ids（活跃事务列表，不含创建者自身）、min_trx_id（m_ids 最小值）、max_trx_id（<strong>全局事务 id 计数器当前值，不是 m_ids 最大值</strong>）、creator_trx_id；
+- <strong>聚簇索引隐藏列</strong>：trx_id（最近修改的事务 id）+ roll_pointer（指向 undo log 旧版本，串成<strong>版本链</strong>）。</p>
+<p>可见性判定三规则：① <code>trx_id &lt; min_trx_id</code> → 创建前已提交 → 可见；② <code>trx_id &gt;= max_trx_id</code> → 创建后才启动 → 不可见；③ 区间内看 m_ids：在 → 创建时仍活跃 → 不可见，不在 → 已提交 → 可见。沿 roll_pointer 向下找第一个可见版本。</p>
+<h3 id="_6">生产落地</h3>
+<p><strong>RC 与 RR 的唯一本质区别：Read View 创建时机</strong>——RC 每次读都重新生成；RR 事务启动时生成一次、全程复用。这就是不可重复读的成因与解法。</p>
+<p>事务启动时机陷阱：<code>begin/start transaction</code> 之后<strong>第一条 select 才是事务真正启动</strong>；<code>start transaction with consistent snapshot</code> 才立即启动。</p>
+<p>源码对应（MySQL 8.0 <code>ReadView::changes_visible()</code>）：<code>m_up_limit_id</code>=概念上的 min_trx_id（低水位），<code>m_low_limit_id</code>=概念上的 max_trx_id（高水位）——<strong>命名与数值大小直觉相反</strong>；m_ids 有序，判定用 <code>std::binary_search</code> <strong>O(log N)</strong>，这是 MVCC 支撑高并发的关键。</p>
+<h3 id="_7">踩坑规避</h3>
+<ul>
+<li><strong>RR 不是彻底无幻读</strong>：普通 select 靠 MVCC 快照读规避；<code>select ... for update</code> 当前读靠 <strong>next-key lock</strong>（记录锁+间隙锁）规避；仍有边界场景，不要迷信；</li>
+<li>不要为了解决幻读升到<strong>串行化</strong>：读写全加锁，并发性能雪崩，易锁等待/死锁；</li>
+<li>大事务持有 Read View 过久 → 版本链越拉越长，undo 无法清理（purge 受阻），查询遍历版本链变慢；</li>
+<li>RC 下"两次读不一致"是正常语义，业务代码里<strong>先查后改</strong>的校验逻辑要放事务内或改用当前读/乐观锁。</li>
+</ul>
+<h3 id="_8">优化进阶</h3>
+<ul>
+<li>长事务监控：<code>information_schema.innodb_trx</code> 查 <code>trx_started</code>；</li>
+<li>降低 RR 下版本链扫描成本：控制事务时长、避免大事务；</li>
+<li>快照读不加锁是 RR 高并发的根基——<strong>能用普通 select 就别用 for update</strong>；</li>
+<li>需要"读到最新已提交"语义（如库存校验）→ 当前读 + 行锁，或乐观锁版本号。</li>
+</ul>
+<h3 id="_9">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>隔离级别</th>
+<th>脏读</th>
+<th>不可重复读</th>
+<th>幻读</th>
+<th>性能</th>
+<th>选用建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>读未提交</td>
+<td>√</td>
+<td>√</td>
+<td>√</td>
+<td>最高</td>
+<td>生产禁用</td>
+</tr>
+<tr>
+<td>读提交（RC）</td>
+<td>×</td>
+<td>√</td>
+<td>√</td>
+<td>高</td>
+<td>互联网默认（阿里改造）；主从/ Binlog 场景友好</td>
+</tr>
+<tr>
+<td>可重复读（RR，InnoDB 默认）</td>
+<td>×</td>
+<td>×</td>
+<td>很大程度上避免</td>
+<td>中</td>
+<td>金融、账务等强一致场景</td>
+</tr>
+<tr>
+<td>串行化</td>
+<td>×</td>
+<td>×</td>
+<td>×</td>
+<td>最低</td>
+<td>几乎不用</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="sql">模块七：索引失效案例集与 SQL 编写规约</h2>
+<h3 id="_10">核心原理</h3>
+<p>B+ 树索引按索引值<strong>有序存储</strong>，一切失效场景的本质：<strong>查询条件无法利用有序性定位</strong>，或<strong>比较对象不是索引原始值</strong>。</p>
+<h3 id="_11">生产落地（六大失效场景速查）</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>示例</th>
+<th>根因</th>
+<th>规避</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>左/右模糊</td>
+<td><code>name like '%林'</code></td>
+<td>无法定位前缀起点</td>
+<td><code>'林%'</code>；或全文索引/ES</td>
+</tr>
+<tr>
+<td>索引用函数</td>
+<td><code>length(name)=6</code></td>
+<td>索引存原始值</td>
+<td>改写；或函数索引（8.0+）<code>add key idx ((length(name)))</code></td>
+</tr>
+<tr>
+<td>索引表达式</td>
+<td><code>id + 1 = 10</code></td>
+<td>同上</td>
+<td>移到等值另一边 <code>id = 10 - 1</code></td>
+</tr>
+<tr>
+<td><strong>隐式类型转换</strong></td>
+<td><code>phone = 1300000001</code>（phone varchar）</td>
+<td>字符串↔数字比较时 MySQL <strong>把字符串转数字</strong> → 等于对索引列 CAST</td>
+<td>参数类型与列类型严格一致</td>
+</tr>
+<tr>
+<td>联合索引非最左</td>
+<td><code>(a,b,c)</code> 上 <code>where b=2</code></td>
+<td>排序仅从最左列开始</td>
+<td>按最左前缀设计查询</td>
+</tr>
+<tr>
+<td>OR 跨非索引列</td>
+<td><code>id=1 or age=18</code></td>
+<td>单边索引无意义</td>
+<td>全建索引走 index_merge 或改 UNION</td>
+</tr>
+</tbody>
+</table>
+<p><strong>团队规约建议</strong>：① 字符串字段查询必须传字符串参数（Java 侧防 int 透传）；② LIKE 一律前缀匹配；③ 联合索引按查询频次与选择性设计最左序列；④ Code Review 检查索引列上的函数与运算。</p>
+<h3 id="_12">踩坑规避</h3>
+<ul>
+<li>隐式类型转换<strong>方向性陷阱</strong>：字符串列 vs 数字参数 → 失效；整型列 vs 字符串参数 → 不走失效（CAST 作用于参数）。别记反；</li>
+<li><code>where a=1 and c=3</code> 在联合索引 <code>(a,b,c)</code> 上是索引截断：5.6+ 靠 <strong>ICP 索引下推</strong>在引擎层过滤 c（<code>Using index condition</code>），减少回表——但依然建议补全 b；</li>
+<li>explain 判读：<code>type=ALL</code> 全表、<code>range</code> 索引范围、<code>index</code> 全索引扫描（比 ALL 好但仍是全扫）、<code>Extra</code> 出现 <code>Using index</code> 才是覆盖索引。</li>
+</ul>
+<h3 id="_13">优化进阶</h3>
+<ul>
+<li>覆盖索引设计：查询字段全部在索引内 → 不回表（<code>select id, name from t where name='林%'</code>）；</li>
+<li>函数索引（MySQL 8.0+）兜底历史遗留 SQL：<code>alter table t add key idx_len ((length(name)))</code>；</li>
+<li>慢查询日志 + pt-query-digest 定期复盘，把新 SQL 的失效场景消灭在测试环境。</li>
+</ul>
+<h3 id="_14">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>适用</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>改写 SQL</td>
+<td>首选，零成本</td>
+<td>需开发配合</td>
+</tr>
+<tr>
+<td>调整/新增索引</td>
+<td>高频查询</td>
+<td>写放大 + 空间</td>
+</tr>
+<tr>
+<td>函数索引（8.0+）</td>
+<td>无法改写的函数条件</td>
+<td>维护成本</td>
+</tr>
+<tr>
+<td>全文索引/ES</td>
+<td>模糊搜索场景</td>
+<td>架构复杂度</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_15">模块八：锁体系与死锁治理</h2>
+<h3 id="_16">核心原理</h3>
+<p>按范围分三级：<strong>全局锁</strong>（<code>flush tables with read lock</code> 全库只读）/ <strong>表级锁</strong>（表锁、MDL、意向锁、AUTO-INC 锁）/ <strong>行级锁</strong>（Record Lock 记录锁、Gap Lock 间隙锁、Next-Key Lock 临键锁、插入意向锁）。</p>
+<p>关键认知：
+- <strong>普通 select 是快照读不加锁</strong>；<code>lock in share mode</code>（S 锁）/ <code>for update</code>（X 锁）才是锁定读，且<strong>必须在事务中</strong>；
+- 意向锁（IS/IX）只为<strong>快速判断表里是否有行被锁</strong>，避免加表锁遍历全表；
+- <strong>间隙锁之间互相兼容</strong>（都是防插入）；插入意向锁与区间上的间隙锁互斥；
+- MDL：CRUD 自动加读锁，DDL 加写锁，<strong>事务提交才释放</strong>；MDL 写锁等待会阻塞后续所有 CRUD（写优先级高于读）。</p>
+<h3 id="_17">生产落地</h3>
+<ul>
+<li>全库备份：<code>mysqldump --single-transaction</code>（RR + MVCC，业务不阻塞）替代全局锁；MyISAM 只能全局锁；</li>
+<li><strong>AUTO-INC 锁</strong>：<code>innodb_autoinc_lock_mode=2</code>（申请即释放）性能最高，但 <strong>必须搭配 <code>binlog_format=row</code></strong>——statement 格式下主库并发分配 id 不连续、从库顺序执行连续 → 主从不一致；</li>
+<li>防幻读组合：RR 下快照读靠 MVCC，当前读靠 next-key lock（关联模块六）。</li>
+</ul>
+<h3 id="_18">踩坑规避</h3>
+<ul>
+<li><strong>MDL 长事务 + DDL 事故链</strong>：长事务持 MDL 读锁 → DDL 等写锁 → 后续 CRUD 全堵 → 连接池打满。DDL 前必查 <code>information_schema.innodb_trx</code> 长事务，设 <code>lock_wait_timeout</code>（默认 31536000s！必须调小，如 10~50s）；</li>
+<li><strong>update 无索引锁全表</strong>：UPDATE/DELETE 的 where 无索引 → 行锁退化为<strong>锁全表</strong>（每条记录都加 Gap/Next-Key），必现批量阻塞；</li>
+<li>大事务长持锁：事务内做 RPC、大循环 → 持锁时间拉长，连锁阻塞。事务只包数据库操作；</li>
+<li>死锁处置：<code>SHOW ENGINE INNODB STATUS</code> 看 LATEST DETECTED DEADLOCK；<code>innodb_lock_wait_timeout</code>（默认 50s）是兜底不是方案。</li>
+</ul>
+<h3 id="_19">优化进阶</h3>
+<ul>
+<li>死锁预防四原则：① 相同顺序访问表与行；② 事务拆小、持锁时间最短化；③ 范围条件精确化（缩小 Gap 范围）；④ 高并发更新行分散（热点行拆分为多行求和）；</li>
+<li>热点行更新：库存扣减用单行原子 <code>UPDATE stock SET n = n - 1 WHERE n &gt;= 1</code>（利用行锁天然串行），避免应用层查改；</li>
+<li>锁监控：<code>SHOW STATUS LIKE 'Innodb_row_lock%'</code> 关注 <code>Innodb_row_lock_waits</code>/<code>time_avg</code>。</li>
+</ul>
+<h3 id="_20">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>方案</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一致性读不加锁</td>
+<td>MVCC 快照读</td>
+<td>普通 select</td>
+</tr>
+<tr>
+<td>读到并锁住</td>
+<td>for update / lock in share mode</td>
+<td>事务内</td>
+</tr>
+<tr>
+<td>并发扣减</td>
+<td>单行原子 UPDATE</td>
+<td>行锁串行化</td>
+</tr>
+<tr>
+<td>跨库互斥</td>
+<td>Redis/ZK 分布式锁</td>
+<td>关联 <a href="../02-backend-components/02.2-redis.html">02.2 模块四</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_21">模块九：三大日志与两阶段提交</h2>
+<h3 id="_22">核心原理</h3>
+<table>
+<thead>
+<tr>
+<th>日志</th>
+<th>层级</th>
+<th>内容</th>
+<th>保证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>redo log</strong></td>
+<td>InnoDB</td>
+<td>物理日志（页+偏移+修改），<strong>循环写</strong></td>
+<td>持久性（crash-safe）</td>
+</tr>
+<tr>
+<td><strong>undo log</strong></td>
+<td>InnoDB</td>
+<td>修改前数据，版本链</td>
+<td>原子性 + MVCC</td>
+</tr>
+<tr>
+<td><strong>binlog</strong></td>
+<td>Server 层</td>
+<td>逻辑/行记录，<strong>追加写全量</strong></td>
+<td>备份 + 主从复制</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>WAL</strong>：先写 redo log 更新即完成，脏页后台刷盘；顺序写远快于随机写——redo log 的本质收益；</li>
+<li>redo log 文件组循环写：write pos 与 checkpoint 之间可写；<strong>write pos 追上 checkpoint → 所有更新阻塞</strong>，强制刷脏页推进 checkpoint。</li>
+</ul>
+<h3 id="_23">生产落地</h3>
+<p><strong>双 1 配置</strong>（安全基线）：<code>innodb_flush_log_at_trx_commit=1</code> + <code>sync_binlog=1</code>——每事务 2 次 fsync。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>行为</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>innodb_flush_log_at_trx_commit</td>
+<td>1（默认）</td>
+<td>提交即 fsync</td>
+<td>性能最低</td>
+</tr>
+<tr>
+<td></td>
+<td>2</td>
+<td>write 到 OS page cache</td>
+<td>OS 崩丢数据</td>
+</tr>
+<tr>
+<td></td>
+<td>0</td>
+<td>每秒后台刷</td>
+<td>MySQL 进程崩丢 1 秒</td>
+</tr>
+<tr>
+<td>sync_binlog</td>
+<td>1</td>
+<td>每次提交 fsync</td>
+<td>最安全</td>
+</tr>
+<tr>
+<td></td>
+<td>N（100~1000）</td>
+<td>攒 N 个事务 fsync</td>
+<td>掉电丢 N 个事务 binlog</td>
+</tr>
+</tbody>
+</table>
+<p><strong>binlog 格式</strong>：<code>row</code>（推荐，无动态函数问题）；statement 有 <code>now()/uuid()</code> 主从不一致风险；mixed 自动选择。</p>
+<p><strong>组提交</strong>（性能优化）：commit 阶段拆 flush（多事务一起 write）/ sync（合并 fsync）/ commit（顺序提交）三阶段队列化；调优参数 <code>binlog_group_commit_sync_delay</code> / <code>binlog_group_commit_no_delay_count</code>；MySQL 5.7+ redo log 也支持组提交。</p>
+<h3 id="_24">踩坑规避</h3>
+<ul>
+<li><strong>两阶段提交不可砍</strong>：redo log 与 binlog 各自刷盘，任一先写后崩溃 → 两份日志不一致 → <strong>主从数据不一致</strong>。2PC 流程：redo log 置 prepare 刷盘 → binlog 写 XID 刷盘 → redo log 置 commit（<strong>binlog 写盘成功 = 事务成功标志</strong>）；</li>
+<li>崩溃恢复判定：重启扫描 redo log，遇 prepare 拿 XID 查 binlog——<strong>有则提交，无则回滚</strong>；</li>
+<li>redo log 可能在提交前被后台线程刷盘（没事，binlog 未写重启照样回滚）；<strong>binlog 必须提交后才刷盘</strong>；</li>
+<li><strong>误删数据恢复只能用 binlog</strong>（redo log 循环写已覆盖）：全量备份 + binlog 增量恢复是标准灾备流程；</li>
+<li>从库不是越多越好（主库 log dump 线程消耗 + 带宽），一般 1 主 2~3 从；复制延迟敏感场景用半同步（5.7+，任一从库 ACK 即返回）。</li>
+</ul>
+<h3 id="_25">优化进阶</h3>
+<ul>
+<li>大事务是日志系统公敌：redo log buffer 打满、binlog cache 溢出、组提交效果差、MDL 持锁久——<strong>大事务必须拆</strong>；</li>
+<li>磁盘 I/O 高时的调优优先级：组提交参数 → sync_binlog=N → flush_log_at_trx_commit=2（安全性递减，业务认可再动）；</li>
+<li>灾备组合拳：每日全量（XtraBackup/RDB 式）+ binlog 增量 + 定期恢复演练（<strong>不演练的备份等于没有备份</strong>）。</li>
+</ul>
+<h3 id="_26">选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>redo log</th>
+<th>binlog</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>崩溃恢复（已提交不丢）</td>
+<td>✅ 唯一手段</td>
+<td>❌（仅归档）</td>
+</tr>
+<tr>
+<td>误删数据恢复</td>
+<td>❌（循环覆盖）</td>
+<td>✅ 全量保留</td>
+</tr>
+<tr>
+<td>主从复制</td>
+<td>❌</td>
+<td>✅ 唯一载体</td>
+</tr>
+<tr>
+<td>写入方式</td>
+<td>循环写</td>
+<td>追加写</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="buffer-pool">模块十：Buffer Pool 深度（缓存引擎内核）</h2>
+<h3 id="1_5">1. 核心原理</h3>
+<p>InnoDB 以 <strong>16KB 页</strong>为磁盘与内存交互单位，Buffer Pool 启动时申请连续内存（默认 128MB，生产设为物理内存 60%~80%）。除索引页/数据页外还缓存 undo 页、插入缓存、自适应哈希、锁信息。每个缓存页配<strong>控制块</strong>（表空间、页号、地址、链表节点），置于池前部，之间可能有碎片。</p>
+<p><strong>三链表管理</strong>：Free 链表（空闲页）、Flush 链表（脏页，后台遍历刷盘）、LRU 链表（脏页+干净页）。脏页同时在 LRU 和 Flush 两链表，刷盘后变干净页。</p>
+<h3 id="2_5">2. 生产落地</h3>
+<ul>
+<li><code>innodb_buffer_pool_size</code> = 物理内存 60-80%；</li>
+<li>读路径：索引定位到页 → 整页加载进 Buffer Pool → 页目录定位记录；</li>
+<li>写路径：改 Buffer Pool 页 → 标脏 → 后台线程刷盘；WAL 保证崩溃恢复。</li>
+</ul>
+<h3 id="3_5">3. 踩坑规避</h3>
+<p><strong>简单 LRU 的两个坑</strong>：
+- <strong>预读失效</strong>：预读的相邻页永不被访问却占 LRU 前排，淘汰热页；
+- <strong>Buffer Pool 污染</strong>：<code>like "%x%"</code> 全表扫描（即使结果集几条）把大量一次访问页涌入 young 区，热数据全灭 → 大量磁盘 IO → 性能急剧下降。</p>
+<p><strong>InnoDB 的三重解法</strong>：
+1. <strong>young/old 分区</strong>（<code>innodb_old_blocks_pct</code> 默认 37，young:old=63:37）：新页只进 old 头部，真正被访问才进 young → 预读页快速淘汰不污染；
+2. <strong>时间门槛</strong>（<code>innodb_old_blocks_time</code> 默认 1000ms）：只有「被访问」且「old 区停留超 1 秒」才进 young → 挡掉批量扫描；
+3. young 区前 1/4 被访问不移动，减少链表调整。</p>
+<p><strong>脏页刷盘抖动</strong>：慢 SQL 监控中<strong>偶尔</strong>出现的长 SQL 可能是刷脏导致；频繁出现 → 调大 Buffer Pool 或 redo log。刷盘触发：redo log 满 / 淘汰脏页 / 空闲期定期 / 正常关闭前。</p>
+<h3 id="4_5">4. 优化进阶</h3>
+<p>多实例 Buffer Pool（<code>innodb_buffer_pool_instances</code>）减少锁竞争；监控 <code>Innodb_buffer_pool_read_requests</code> 与 <code>Innodb_buffer_pool_reads</code>（物理读）比值评估命中率；<code>SHOW ENGINE INNODB STATUS</code> 看 Free/LRU 链表长度判断容量压力。</p>
+<h3 id="5_4">5. 选型对比</h3>
+<p>Buffer Pool vs 查询缓存（MySQL 8.0 已移除 Query Cache）：Buffer Pool 是页级通用缓存且随数据自动失效，Query Cache 粒度太粗、任何表更新即全失效、大并发下互斥锁成为瓶颈——生产只依赖 Buffer Pool。</p>
+<hr />
+<h2 id="sql-server">模块十一 · SQL 执行全链路（Server 层解剖）</h2>
+<blockquote>
+<p>加工来源：小林coding《执行一条 select 语句，期间发生了什么？》（sources/xiaolincoding/mysql/sql-execution-flow.md）</p>
+</blockquote>
+<h3 id="1_6">1. 核心原理</h3>
+<p>一条 select 的完整链路（8 步，Server 层 + 存储引擎层两层架构）：</p>
+<pre><code class="language-text">客户端 → 连接器 → 查询缓存(8.0已删) → 解析器(词法/语法→语法树) → 预处理器(表/字段存在性检查)
+      → 优化器(基于成本选执行计划) → 执行器(与存储引擎按记录交互) → InnoDB(Buffer Pool/B+树/磁盘)
+</code></pre>
+<ul>
+<li><strong>连接器</strong>：TCP 握手 + 鉴权 + <strong>读取权限快照</strong>（连接中途改权限不影响已存连接）；<code>wait_timeout</code> 默认 8 小时回收空闲连接，<code>max_connections</code> 默认 151；</li>
+<li><strong>查询缓存</strong>：key-value 形式，<strong>任何表更新即全表缓存失效</strong>，鸡肋，MySQL 8.0 直接删除（注意删的是 Server 层 Query Cache，不是 InnoDB Buffer Pool）；</li>
+<li><strong>解析器</strong>：只做词法 + 语法分析构建语法树；<strong>表/字段存在性不在解析器</strong>（源码验证：8.0 在 prepare 阶段 <code>get_table_share()</code> 报错）；</li>
+<li><strong>预处理器</strong>：检查表/字段存在、<code>select *</code> 展开为全部列；</li>
+<li><strong>优化器</strong>：基于成本选索引（覆盖索引优先，避免回表）；</li>
+<li><strong>执行器</strong>：<code>read_first_record</code> / <code>read_record</code> 双函数指针模型，以记录为单位与存储引擎交互。</li>
+</ul>
+<h3 id="2_6">2. 生产落地</h3>
+<ul>
+<li><strong>长连接必须治理内存</strong>：连接对象临时内存只在断开时释放，长连接累积会撑爆 MySQL 被 OOM kill。两种解法：① 定期断开长连接；② 执行大操作后调 <code>mysql_reset_connection()</code>（不重连、免鉴权、恢复到初始状态）；</li>
+<li><strong>索引下推（ICP，5.6+）</strong>：联合索引 <code>(age, reward)</code> 遇范围查询 <code>age &gt; 20</code> 后 reward 无法走索引，ICP 把 <code>reward = 100000</code> 的过滤<strong>下推到存储引擎</strong>，先在二级索引层过滤再回表，执行计划 Extra 出现 <code>Using index condition</code>；</li>
+<li><strong>连接数规划</strong>：高并发服务按 <code>max_connections</code> + 连接池（Druid/HikariCP）双限流，避免 Too many connections。</li>
+</ul>
+<h3 id="3_6">3. 踩坑规避</h3>
+<ul>
+<li>权限修改不生效？—— 已建立连接用的是<strong>连接建立时读取的权限快照</strong>，需重连；</li>
+<li>「表不存在报错在解析器」是过时结论（《MySQL 45 讲》旧版说法），<strong>实际在 prepare 阶段</strong>；</li>
+<li>短连接风暴：每次执行 SQL 都走三次握手/四次挥手，高并发下把 MySQL 连接器打满，必须用连接池；</li>
+<li>全表扫描时 Server 层<strong>逐条</strong>发给客户端，客户端只是等查询结束后统一显示——不要误以为有批量发送。</li>
+</ul>
+<h3 id="4_6">4. 优化进阶</h3>
+<p><strong>覆盖索引判定</strong>：<code>select id from product where id &gt; 1 and name like 'i%'</code> 两索引可选时，优化器选二级索引 name（覆盖索引，叶子即主键值，免回表），执行计划 <code>key=name</code> + <code>Extra=Using index</code>。</p>
+<p><strong>执行器双指针模型</strong>（源码级）：第一次查 <code>read_first_record</code>（按访问类型 const/index/all 绑定不同引擎接口），循环查 <code>read_record</code>；const 类型第二次即返回 -1 退出循环。理解该模型即可看懂 explain 的 type 字段本质。</p>
+<h3 id="5_5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>MySQL 8.0 行为</th>
+<th>生产含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>查询缓存</td>
+<td>已删除</td>
+<td>缓存一律用 Redis，不依赖 MySQL 层</td>
+</tr>
+<tr>
+<td>解析/预处理</td>
+<td>拆分为两阶段</td>
+<td>报错定位看错误码阶段（1064 语法 vs 1146 表不存在）</td>
+</tr>
+<tr>
+<td>优化器</td>
+<td>基于成本 CBO</td>
+<td>explain 看 type/key/rows/Extra 四核心字段</td>
+</tr>
+<tr>
+<td>执行器</td>
+<td>双函数指针</td>
+<td>type=const &gt; ref &gt; range &gt; index &gt; ALL 性能阶梯</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="mysql-80-ddl">模块补充 · MySQL 8.0：原子 DDL、隐藏索引、降序索引</h2>
+<blockquote>
+<p>加工来源：MySQL 8.0 参考手册 15.1.1、10.3.12、10.3.13。</p>
+</blockquote>
+<h3 id="1_7">1. 核心原理</h3>
+<p>原子 DDL 把数据字典更新、存储引擎操作和 binlog 写成一次原子动作。服务器中途挂了，要么全部留下，要么回滚。它不是事务性 DDL：语句一开始就结束当前事务，不能包在 <code>START TRANSACTION</code> 里。只有 InnoDB 支持。<code>DROP TABLE t1, t2</code> 在 8.0 里只要有一个表不存在就整句失败，5.7 会删掉已经存在的那张。</p>
+<p>隐藏索引对优化器不可见，但仍然维护，唯一约束仍然生效。主键以及「没有显式主键时充当主键的 NOT NULL 唯一索引」不能隐藏。</p>
+<p>降序索引在 8.0 里真正按降序存。<code>(c1 ASC, c2 DESC)</code> 可以正序扫描，不必再 filesort。只支持 InnoDB 的 BTREE，不支持 HASH、FULLTEXT、SPATIAL。带降序键的二级索引不做 change buffering。</p>
+<h3 id="2_7">2. 生产落地</h3>
+<p>怀疑某个二级索引没用时，先 <code>ALTER TABLE ... ALTER INDEX ... INVISIBLE</code>，看慢查询和 <code>EXPLAIN</code>，确认后再 DROP。混合排序 <code>ORDER BY a ASC, b DESC</code> 建成对应降序索引。从 5.7 复制到 8.0 时，<code>DROP TABLE</code> / <code>DROP VIEW</code> / 多用户 <code>CREATE USER</code> 要加 <code>IF EXISTS</code> 或 <code>IF NOT EXISTS</code>，否则源库上的部分成功会在副本上整句失败。</p>
+<h3 id="3_7">3. 踩坑规避</h3>
+<ul>
+<li>把隐藏索引当成不占写入成本：每次改行仍要更新它。</li>
+<li>用隐藏索引做「先删掉看看」却忘了唯一约束还在，插入照样冲突。</li>
+<li>在非 InnoDB 上期待原子 DDL。</li>
+</ul>
+<h3 id="4_7">4. 优化进阶</h3>
+<p>单条语句临时让优化器看见隐藏索引：<code>/*+ SET_VAR(optimizer_switch = 'use_invisible_indexes=on') */</code>。<code>EXPLAIN</code> 里反向扫描会标 <code>Backward index scan</code>。</p>
+<h3 id="5_6">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INVISIBLE</td>
+<td>验证能不能删索引</td>
+</tr>
+<tr>
+<td>DESC 索引</td>
+<td>混合排序避免 filesort</td>
+</tr>
+<tr>
+<td>原子 DDL</td>
+<td>崩溃后字典和 ibd 一致</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_27">待补充清单</h2>
+<ul>
+<li>MySQL 8.0 原子 DDL、隐藏索引、降序索引：<strong>已完成</strong></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

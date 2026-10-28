@@ -1,5 +1,7 @@
 # Java 后端开发 & 架构 知识库 · 总索引
 
+本地内容站：打开 `site/index.html`。改完 `docs/` 后执行 `python3 tools/build_site.py` 重新生成（需要 Python 包 `markdown`）。
+
 > 依据《Java 后端开发 & 架构・复杂生产环境工程化落地全链路知识库构建规划.md》执行。
 > 本文件是知识库总入口：定义内容来源、处理顺序、目录规范与沉淀标准。
 
@@ -62,10 +64,10 @@ Java-Engineering-Knowledge/
 | 站点 | 目录抓取 | 内容沉淀 | 状态 |
 |------|----------|----------|------|
 | javaguide.cn | ✅ 13/13 板块 | ✅ 19 篇（P0 8 + 并发中/下 + Spring + MyBatis + 微服务 + JVM垃圾回收 + Redis数据结构 + OS面试题上 + 网络面试题上 + 线上排查 + JDK工具）+ 五段式加工（01.1~01.6、02.1~02.3、03.1~03.2、05.1） | ✅ 循环1~9 完成 |
-| javaup.chat | ✅ sitemap 全站 888 URL（hub 页 403 已绕过） | ✅ 14 篇（HashMap/ConcurrentHashMap + 可观测性6篇 + 设计模式2篇 + 锁升级 + SpringBoot自动配置 + 方案设计2篇）+ 五段式加工（01.2/01.3/05.2/01.7/02.3/03.3） | ✅ 循环10~11 完成 |
-| xiaolincoding.com | ✅ 图解网络/系统/MySQL/Redis + 24套面试题 | ✅ 21 篇（+TCP可靠性/虚拟内存/过期淘汰）+ 五段式加工（01.5/01.6/02.1/02.2） | ✅ 循环1~9 完成 |
-| nageoffer.com | ✅ 5 个项目卡片 | ✅ Ragent V2 + oneThread + 牛券/12306/Link 三大项目深挖 + 12306 技术文档 3 篇 + **Ragent 源码级走读**（945 文件类级别）+ 五段式加工（07.1） | ✅ 循环1~26 完成 |
-| xiaolinnote.com | ✅ Agent/RAG/LLM/AI编程 89 题 | ✅ 89 题清单 + 图解Agent/RAG万字图解 + ReAct/Multi-Agent + ClaudeCode/Codex 目录 + **Agent 30 题 + RAG 23 题 + 工具调用 22 题 + AI 编程 14 题全部精解（89/89）**+ **工程方法论 4 篇万字长文**（Harness/Loop/Graph Engineering），五段式加工（06.1 十九模块） | ✅ 89题逐题加工全部完成（Agent 30/30 + RAG 23/23 + 工具调用 22/22 + AI 编程 14/14）+ 工程方法论 4/4 完成 |
+| javaup.chat | ✅ sitemap 全站 888 URL（hub 页 403 已绕过） | ✅ 23 篇（+ Docker3 + 发布策略 + link-flow 发布；设计模式6 + 可观测性等）+ 五段式加工（含 04.2） | ✅ 循环10~11、27~28 完成 |
+| xiaolincoding.com | ✅ 图解网络/系统/MySQL/Redis + 24套面试题 | ✅ 22 篇（+Docker面试题）+ 五段式加工（01.5/01.6/02.1/02.2/04.2） | ✅ 循环1~9、28 完成 |
+| nageoffer.com | ✅ 5 个项目卡片 | ✅ 三大项目深挖 + 12306 技术文档 3 篇 + **Ragent 源码走读** + **12306 购票主链源码走读** + 五段式加工（07.1 九模块） | ✅ 循环1~26、30 完成 |
+| xiaolinnote.com | ✅ Agent/RAG/LLM/AI编程 89 题 + llm 工程题库 | ✅ 89 题全解 + 工程方法论 4 篇 + **大模型工程 6 篇**（Transformer/Attention/KV/LoRA/MoE/目录）→ 06.1 二十模块 | ✅ 循环13~25、29 完成 |
 
 ### 已完成文件清单（sources/）
 
@@ -99,12 +101,24 @@ javaup/
 │   ├── skywalking-source-part-03.md                   # SkyWalking源码解析3：BootService SPI
 │   ├── distributed-logging.md                         # 分布式日志系统架构（ELK/Loki/ClickHouse）
 │   └── system-performance-monitoring.md               # 系统性能监控（CPU/负载/排查六步）
-├── design-pattern/                                    # 设计模式（循环11，换源成功）
+├── design-pattern/                                    # 设计模式（循环11 + 循环27 补齐）
 │   ├── overview-and-principles.md                     # 设计模式总览与SOLID七原则
-│   └── singleton-pattern.md                           # 单例模式深度（五写法/破坏与防护）
+│   ├── singleton-pattern.md                           # 单例模式深度（五写法/破坏与防护）
+│   ├── factory-pattern.md                             # 工厂三变体（简单/方法/抽象）与选型
+│   ├── structural-patterns.md                         # 结构型：代理/享元/不可变
+│   ├── behavioral-patterns.md                         # 行为型：策略/模板/观察者/责任链/状态
+│   └── mvc-and-practice.md                            # MVC 与策略+工厂+模板组合实战
 ├── concurrent-multithreading/
 │   └── synchronized-lock-upgrade.md                   # Synchronized锁升级（MarkWord四态/JIT优化）
 ├── framework/springboot-auto-configuration.md         # SpringBoot自动配置原理
+├── docker/                                            # Docker（循环28）
+│   ├── core-concepts.md                               # 容器/镜像/仓库 + Namespace/Cgroup + 多阶段构建
+│   ├── practical-guide.md                             # 安装加速/生命周期/资源限制/网络/Volume
+│   └── advanced-applications.md                       # Dockerfile/Compose/K8s 入门三件套
+├── architecture/
+│   └── deploy-strategy.md                             # 蓝绿/金丝雀/滚动 + Istio 灰度 + 基线回滚
+├── link-flow/
+│   └── deployments-blue-green-canary-rolling.md       # 三种发布策略图解补充
 └── solution-design/                                   # 方案设计（循环11）
     ├── flash-sale-inventory.md                        # 秒杀系统架构与库存扣减（页面动态加载仅获静态部分）
     └── high-availability-avalanche-protection.md      # 高可用雪崩防护（页面动态加载仅获静态部分）
@@ -132,7 +146,8 @@ xiaolincoding/
 ├── mysql/sql-execution-flow.md                        # 执行一条select语句期间发生了什么（Server层全链路）
 ├── network/tcp-reliability.md                         # TCP重传/滑动窗口/流量控制/拥塞控制（全参数）
 └── os/io-multiplexing.md                              # I/O多路复用select/poll/epoll（红黑树/就绪链表/LT-ET）
-└── os/virtual-memory.md                               # 为什么要有虚拟内存（分段分页/多级页表/TLB/Linux布局）
+├── os/virtual-memory.md                               # 为什么要有虚拟内存（分段分页/多级页表/TLB/Linux布局）
+└── docker/docker-interview.md                         # Docker面试题（Namespace/cgroup/分层/Dockerfile）
 
 nageoffer/
 ├── _index.md                                          # 5 个项目完整卡片（Ragent/oneThread/oneCoupon/12306/SaaS短链）
@@ -142,6 +157,7 @@ nageoffer/
 ├── onethread.md                                       # oneThread动态线程池（配置中心热更/拒绝代理/监控告警/项目结构）
 ├── onecoupon.md                                       # 牛券oneCoupon（十万QPS/34小节课程地图/七大亮点/分库分表选型）
 ├── 12306.md                                           # 12306购票（座位分配算法/分段扣减/三大误区/双版本/100+文档结构）
+├── 12306/source-walkthrough.md                        # 12306源码走读（循环30：v2购票链/分段锁座/令牌桶/选座降级）
 ├── shortlink.md                                       # SaaS短链Link（五步原理/SaaS五挑战/PTS压测12kTPS/56kQPS）
 └── 12306-tech/                                        # 12306项目文档库·核心技术文档（循环12）
     ├── distributed-id.md                              # 分布式ID与雪花算法（组成/重复三条件/Redis+Lua动态分配标识位）
@@ -241,11 +257,17 @@ xiaolinnote/
 ├── coding/stale_code_description.md                    # 题12：过期描述（来源四要素/指纹/依赖传播/先失效后重建）
 ├── coding/session_handoff.md                           # 题13：会话交接（HANDOFF.md/工作区核对/命令分类重放）
 ├── coding/permission_boundaries.md                      # 题14：权限边界（三层权限/策略示意/注入防范/自主与确认）
-│   └── engineering/                                    # 工程方法论（图解Agent专栏万字长文）
-│       ├── harness_engineering.md                      # Harness工程（Agent=Model+Harness/六层结构/五大难点五原则）
-│       ├── loop_engineering.md                         # Loop工程（四大瓶颈迁移/五大件+磁盘记忆/三盆冷水）
-│       ├── loop_engineering_handbook.md                # Loop落地手册（最小四件套/14步清单/安全四红线）
-│       └── graph_engineering.md                        # Graph工程（节点/边/状态/fan-out汇合/LangGraph骨架）
+├── engineering/                                       # 工程方法论（图解Agent专栏万字长文）
+│   ├── harness_engineering.md                         # Harness工程（Agent=Model+Harness/六层结构/五大难点五原则）
+│   ├── loop_engineering.md                            # Loop工程（四大瓶颈迁移/五大件+磁盘记忆/三盆冷水）
+│   ├── loop_engineering_handbook.md                   # Loop落地手册（最小四件套/14步清单/安全四红线）
+│   └── graph_engineering.md                           # Graph工程（节点/边/状态/fan-out汇合/LangGraph骨架）
+├── llm/                                               # 大模型工程（循环29）
+│   ├── transformer_architecture.md                    # Transformer / Decoder-only
+│   ├── mha_mqa_gqa_flash_attention.md                 # MQA/GQA/Flash Attention
+│   ├── kv_cache_prompt_caching.md                     # KV Cache 与 Prompt Caching
+│   ├── lora.md                                        # LoRA 五优点
+│   └── moe.md                                         # MoE 总参/激活解耦
 ├── claudecode/index.md                                # 图解Claude Code专栏目录（五方向/源码解析/工程化六件套）
 └── codex/index.md                                     # 图解Codex专栏目录（AGENTS.md/Skills/Harness架构）
 
@@ -268,7 +290,7 @@ docs/
 │   ├── 01.4-jvm.md                            # JVM内核与线上排查（5模块，含垃圾回收深度/收集器选型）
 │   ├── 01.5-network-tcp.md                    # 计算机网络（5模块：TCP/可靠性全参数/TCP与UDP/HTTP·HTTPS/I/O多路复用/体系结构）
 │   ├── 01.6-os-fundamentals.md                # 操作系统基础（3模块：内核态与系统调用/进程线程模型/内存管理虚拟内存）
-│   └── 01.7-design-patterns.md                # 设计模式与编码工程化（SOLID七原则 + 单例五写法/破坏防护）
+│   └── 01.7-design-patterns.md                # 设计模式与编码工程化（SOLID + 单例 + 工厂三变体 + 结构型 + 行为型，五模块）
 ├── 02-backend-components/                     # 域2 后端技术组件工程化
 │   ├── 02.1-mysql.md                          # MySQL工程化（11模块：…/锁体系/三大日志/BufferPool/SQL执行全链路）
 │   ├── 02.2-redis.md                          # Redis工程化（14模块：…/哨兵/分布式锁/大Key治理/Redis Cluster/过期淘汰）
@@ -278,22 +300,33 @@ docs/
 │   ├── 03.2-microservices.md                  # 微服务架构工程化（拆分/治理/一致性/稳定性）
 │   └── 03.3-solution-design.md                # 高并发方案设计精选（秒杀五层过滤+库存矩阵/雪崩防护四层矩阵）
 ├── 06-performance-ai/
-│   └── 06.1-ai-frontier.md                    # AI前沿（十九模块：Agent/RAG/工具调用/AI编程四题库89题 + 工程方法论 + RAG全链路/推理协作模式）
+│   └── 06.1-ai-frontier.md                    # AI前沿（二十模块：89题 + 工程方法论 + 大模型工程 Transformer/KV/LoRA/MoE）
 ├── 07-business-cases/
-│   └── 07.1-projects.md                       # 实战项目案例库（Ragent V2深挖 + 源码级走读 + oneThread + 牛券/12306/Link 三大项目五段式深挖）
+│   └── 07.1-projects.md                       # 实战项目案例库（九模块：Ragent/12306 源码走读 + oneThread + 牛券/Link）
 ├── 04-delivery-cloudnative/
-│   └── 04.1-ai-native-delivery.md             # AI原生研发与Coding Agent工程化（六件设施/源码级设计/Starter交付范式）
+│   ├── 04.1-ai-native-delivery.md             # AI原生研发与Coding Agent工程化（六件设施/源码级设计/Starter交付范式）
+│   └── 04.2-cloud-native.md                   # 传统云原生（Docker/Compose→K8s/蓝绿·金丝雀·滚动与CI门禁）
 └── 05-ops-observability/
     ├── 05.1-troubleshooting.md                # 生产运维与线上排查实战（现象速查表/止血留证/全场景SOP/工具矩阵）
-    └── 05.2-observability.md                  # 可观测性三支柱深度（体系分层/Prometheus工程化/分布式日志/SkyWalking源码/性能监控）
-```
+    ├── 05.2-observability.md                  # 可观测性三支柱深度（体系分层/Prometheus工程化/分布式日志/SkyWalking源码/性能监控）
+    └── 05.3-otel-slo-thanos.md                # OTel 信号与 Java agent / SLO 错误预算 / Thanos 长期存储```
 
-### 状态：循环 1~26 完成 ✅
+### 状态：循环 1~39 完成 ✅
 
-- **sources/** 收集层：166 个 md（161 篇内容 + 5 站点目录），全部带溯源元信息；
-- **docs/** 加工层：19 个 md（18 篇知识域文档 + 索引），七大知识域全部覆盖，统一五段式；
+- **sources/** 收集层：199 个 md（194 篇内容 + 5 站点目录），全部带溯源元信息；
+- **docs/** 加工层：21 个 md（20 篇知识域文档 + 索引），七大知识域全部覆盖，统一五段式；
 - **远程仓库**：https://github.com/WilSenwish/Java-Engineering-Knowledge （main 分支；网络抖动时仅保本地）；
-- **循环10~12 解决的历史遗留**：域5 监控三支柱空白、设计模式换源受阻、SpringBoot 付费页空白、牛券/12306/Link 项目深挖均已补齐；
-- **循环13~25（已完成 · xiaolinnote 89 题全部加工完成 + 工程方法论 4 篇）**：Agent 30/30 + RAG 23/23 + 工具调用 22/22 + AI 编程 14/14，全部五段式并入 06.1（十九模块）；循环25 追加 Harness/Loop/Graph Engineering 工程方法论（模块十九）；
-- **循环26（已完成 · Ragent 源码级走读）**：浅克隆 nageoffer/ragent（945 Java 文件/约 11.9 万行）4 路并行调研，07.1 新增模块八（类级别走读 + 踩坑源码级对策表 14 条）；
-- **后续扩充方向**（非本轮范围）：传统云原生（Docker/K8s/CI-CD）、Prometheus 多集群长期存储与 SLO、OpenTelemetry、javaup 方案设计其余 14 篇、设计模式其余两篇（factory/structural/behavioral）、nageoffer 牛券/12306/Link GitHub 源码级走读、大模型工程专题（Transformer/KV Cache/LoRA/MoE）。
+- **循环27（已完成 · 设计模式补齐）**：01.7 模块三~五；
+- **循环28（已完成 · 传统云原生）**：新建 04.2；
+- **循环29（已完成 · 大模型工程）**：06.1 模块二十；
+- **循环30（已完成 · 12306 源码走读）**：07.1 模块九；
+- **循环31（已完成 · Link 源码走读）**：浅克隆 nageoffer/shortlink（188 Java）→ 07.1 模块十（MurmurHash+Base62、Goto 路由表、布隆+空值缓存跳转）；牛券仓库 404，无公开源码；
+- **循环32（已完成 · 位置编码/量化/部署）**：06.1 模块二十一；
+- **循环33（已完成 · 训练/解码/幻觉/评测）**：06.1 模块二十二；
+- **循环34（已完成 · 采样与对齐家族）**：06.1 模块二十三；
+- **循环35（已完成 · 选型与有效上下文）**：06.1 模块二十四；
+- **循环36（已完成 · OTel / SLO / Thanos）**：新建 05.3；
+- **循环37（已完成 · 收口已定位缺口）**：05.2 模块六（SkyWalking 插件/见证类/织入）、04.2 模块四（cAdvisor 与 HPA）、01.3 模块九（虚拟线程）；过期清单改为交叉引用；
+- **循环38（已完成 · 能抓到的剩余专题）**：方案设计 14 篇按已返回正文写入 03.3；Seata 四模式写入 03.1；ZGC 停顿目标写入 01.4；MyBatis-Plus 写入 02.3；MySQL 8.0 原子 DDL / 隐藏索引 / 降序索引写入 02.1。页面后半未返回的段落没有补写。
+- **循环39（已完成）**：文件系统 inode 写入 01.6；RSA 握手、WebSocket、零拷贝写入 01.5；Nacos 与 Gateway/Nginx 分层写入 03.2。
+- **确认不做**：牛券无仓库；Claude Code 源码分篇无正文；压测、Sentinel 细则、Seata/JVM 源码长文没有可抓取的完整正文。

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>05.2 可观测性三支柱深度：Metrics / Logging / Tracing</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details open><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="active" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="052-metrics-logging-tracing">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</h1>
+<blockquote>
+<p><strong>所属知识域</strong>：域5 生产运维与可观测性
+<strong>加工来源</strong>：javaup《微服务可观测性与监控体系》《分布式日志系统架构》《系统性能监控》《SkyWalking 源码解析 1-3》（sources/javaup/observability/）
+<strong>关联文档</strong>：<a href="05.1-troubleshooting.html">05.1 线上排查实战</a>（JVM/线程/DB 级排查）、<a href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础</a>（进程线程模型）、<a href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a>（DB 监控指标）</p>
+</blockquote>
+<hr />
+<h2 id="_1">模块一 · 可观测性体系与监控分层</h2>
+<h3 id="1">1. 核心原理</h3>
+<p><strong>监控与可观测性的区别</strong>：监控回答"已知的未知"（我关心的指标是否异常）；可观测性回答"未知的未知"（系统出现了我没预设过的异常，能否通过数据定位）。三大支柱缺一不可：</p>
+<table>
+<thead>
+<tr>
+<th>支柱</th>
+<th>数据形态</th>
+<th>回答的问题</th>
+<th>局限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Metrics（指标）</strong></td>
+<td>聚合时序数值</td>
+<td>"系统整体健康吗？P99 多少？"</td>
+<td>无法回答单个异常请求的细节</td>
+</tr>
+<tr>
+<td><strong>Logging（日志）</strong></td>
+<td>离散事件 + 上下文</td>
+<td>"这个请求为什么失败？"</td>
+<td>存储成本高、跨服务关联难</td>
+</tr>
+<tr>
+<td><strong>Tracing（链路）</strong></td>
+<td>Span 调用树</td>
+<td>"请求在哪个环节慢/错？"</td>
+<td>采样丢失细节、接入有成本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>核心概念</strong>：Trace（一次完整请求，全局唯一 TraceId）→ Span（单个操作单元，如一次 RPC/DB 查询，含 SpanId + 父 SpanId 形成调用树）→ Tag/Lag（Span 元数据与事件日志）。</p>
+<h3 id="2">2. 生产落地</h3>
+<p><strong>监控分层模型</strong>（从底向上，逐层下钻）：</p>
+<pre><code class="language-text">L1 基础设施：CPU/内存/磁盘/网络/容器-Pod（Node Exporter、cadvisor）
+L2 中间件：  MySQL（连接数/QPS/慢查/主从延迟）、Redis（命中率/内存/大Key）、
+             MQ（堆积量/生产消费速率/分区均衡）
+L3 应用服务： 接口 QPS/P50-P95-P99/错误率/超时率、JVM（GC/内存区/线程死锁）、
+             外部依赖成功率与延迟
+L4 业务指标： 订单量/成交额/注册量/转化率/关键流程成功率（Micrometer 自定义 Meter）
+</code></pre>
+<p><strong>技术选型总表</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>推荐方案</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>指标监控</td>
+<td>Prometheus + Grafana</td>
+<td>CNCF 毕业，云原生标配</td>
+</tr>
+<tr>
+<td>日志管理</td>
+<td>ELK / Loki / ClickHouse</td>
+<td>按规模与成本选（见模块三）</td>
+</tr>
+<tr>
+<td>链路追踪</td>
+<td>SkyWalking / Jaeger</td>
+<td>Java 栈首选 SkyWalking（零侵入）</td>
+</tr>
+<tr>
+<td>告警管理</td>
+<td>AlertManager</td>
+<td>分级、收敛、抑制</td>
+</tr>
+</tbody>
+</table>
+<h3 id="3">3. 踩坑规避</h3>
+<ul>
+<li><strong>只做 L3 不做 L4</strong>：技术指标全绿但业务在跌（如支付成功率下降但接口错误率正常——对端通道抖动）——业务监控是最后防线；</li>
+<li><strong>监控大盘做成"大屏汇报工程"</strong>：好看 &gt; 可用。大盘应按"排障路径"组织（总览→服务→实例），不是按"领导参观路线"组织；</li>
+<li><strong>忽视 K8s 容器口径</strong>：Pod 的 CPU 指标是 limit 口径，<code>top</code> 看的是宿主机口径，两者对不上就误判。</li>
+</ul>
+<h3 id="4">4. 优化进阶</h3>
+<p><strong>监控大盘分层设计</strong>：L1 全局概览（核心业务指标/SLA 达成）→ L2 服务层面（各服务 QPS/延迟/错误率/依赖健康）→ L3 实例层面（单实例详细指标，排障专用）。<strong>Grafana 变量联动</strong>（$service → $instance）实现一块大盘下钻全链路。</p>
+<p><strong>告警治理四原则</strong>：① 可执行（收到就知道干什么，不需要处理的告警不发）；② 分级清晰（critical 立刻通知到人，warning 次日处理）；③ 收敛合理（同组告警合并，防刷屏）；④ 有上下文（告警信息含定位所需的全部标签）。定期复盘：梳理无效告警、检查覆盖缺口、统计响应/恢复时长。</p>
+<p><strong>OnCall 机制</strong>：排班轮值保证随时有人响应；告警升级（主 OnCall 未响应自动升级备 OnCall）；故障复盘后必须沉淀监控改进项。</p>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>监控系统</th>
+<th>存储</th>
+<th>采集模式</th>
+<th>云原生</th>
+<th>现状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zabbix</td>
+<td>MySQL（时序数据性能差）</td>
+<td>主动+被动</td>
+<td>不友好</td>
+<td>传统企业存量</td>
+</tr>
+<tr>
+<td>Nagios</td>
+<td>文件</td>
+<td>主动探测</td>
+<td>无</td>
+<td>老旧，逐渐淘汰</td>
+</tr>
+<tr>
+<td><strong>Prometheus + Grafana</strong></td>
+<td>自带 TSDB</td>
+<td><strong>Pull</strong> + 服务发现</td>
+<td><strong>原生</strong></td>
+<td><strong>主流标配</strong></td>
+</tr>
+<tr>
+<td>Open-Falcon</td>
+<td>自研分片</td>
+<td>Push</td>
+<td>一般</td>
+<td>国内存量，社区一般</td>
+</tr>
+</tbody>
+</table>
+<p>Prometheus 关键特性：高性能时序数据库、PromQL、Pull 模式侵入小、K8s 服务发现、Exporter 生态丰富。</p>
+<hr />
+<h2 id="metrics-prometheus">模块二 · Metrics 深度：Prometheus 工程化落地</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>Pull 模式</strong>：Prometheus 主动按 <code>scrape_interval</code> 拉取 <code>/actuator/prometheus</code> 端点，被监控方零注册成本；缺点是跨网络域需 PushGateway 中转；</li>
+<li><strong>数据模型</strong>：指标名 + 标签（Label）维度 + 时间序列；<code>rate()</code>/<code>histogram_quantile()</code> 等函数基于时序计算；</li>
+<li><strong>Micrometer</strong>：Spring Boot 2 的度量门面（对标 SLF4J 之于日志），通过 <code>MeterRegistry</code> 对接 Prometheus，业务代码只依赖门面不绑实现。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<p><strong>Docker Compose 一键三件套</strong>（Prometheus + Grafana + AlertManager）：</p>
+<pre><code class="language-yaml">version: '3'
+services:
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports: [&quot;9090:9090&quot;]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports: [&quot;3000:3000&quot;]
+    environment: [GF_SECURITY_ADMIN_PASSWORD=your_password]
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    ports: [&quot;9093:9093&quot;]
+    volumes: [./alertmanager.yml:/etc/alertmanager/alertmanager.yml]
+</code></pre>
+<p><strong>采集配置要点</strong>（prometheus.yml）：</p>
+<pre><code class="language-yaml">global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: 'spring-boot-apps'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['order-service:8080', 'user-service:8080']
+  - job_name: 'kubernetes-pods'        # K8s 环境用服务发现，别写死 IP
+    kubernetes_sd_configs: [{role: pod}]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+</code></pre>
+<p><strong>Spring Boot 接入</strong>（依赖 + 配置 + 自定义指标）：</p>
+<pre><code class="language-xml">&lt;!-- actuator + micrometer prometheus registry --&gt;
+</code></pre>
+<pre><code class="language-yaml">management:
+  endpoints.web.exposure.include: prometheus,health,info
+  metrics.tags.application: ${spring.application.name}
+</code></pre>
+<pre><code class="language-java">/** 业务指标：Counter 计数 + Timer 耗时（P50/P95/P99）+ Gauge 瞬时值 */
+@Component
+public class OrderMetrics {
+    private final Counter orderCreatedCounter;   // 订单创建成功数
+    private final Timer orderProcessTimer;       // 订单处理耗时（分位数）
+    private final AtomicInteger pendingOrderGauge; // 待处理订单数
+
+    public OrderMetrics(MeterRegistry registry) {
+        this.orderCreatedCounter = Counter.builder(&quot;order_created_total&quot;)
+                .tag(&quot;service&quot;, &quot;order-service&quot;).register(registry);
+        this.orderProcessTimer = Timer.builder(&quot;order_process_duration&quot;)
+                .publishPercentiles(0.5, 0.95, 0.99).register(registry);
+        this.pendingOrderGauge = new AtomicInteger(0);
+        Gauge.builder(&quot;order_pending_count&quot;, pendingOrderGauge, AtomicInteger::get)
+                .register(registry);
+    }
+    // 业务代码中：metrics.recordOrderCreated(); metrics.recordProcessTime(start);
+}
+</code></pre>
+<p><strong>PromQL 常用范式</strong>：</p>
+<pre><code class="language-promql">sum by(service) (rate(http_requests_total[1m]))                          # 按服务 QPS
+sum(rate(http_requests_total{status=~&quot;5..&quot;}[5m]))
+  / sum(rate(http_requests_total[5m])) * 100                             # 错误率
+histogram_quantile(0.99, sum by(le) (rate(http_request_duration_seconds_bucket[5m])))  # P99
+(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100  # 内存使用率
+</code></pre>
+<p><strong>告警规则 + AlertManager 路由</strong>（详见 sources/javaup/observability/microservice-observability.md 完整 YAML）：</p>
+<ul>
+<li>规则分层：服务可用性（ServiceDown/HighErrorRate/HighLatency）、基础设施（HighCPU/HighMemory/DiskSpaceLow）、业务指标（OrderSuccessRateLow/MessageBacklog）；</li>
+<li><code>for</code> 持续时间防抖动；<code>severity</code> 标签驱动路由；</li>
+<li>AlertManager 分组参数：<code>group_wait: 30s</code>（收集同组）、<code>group_interval: 5m</code>、<code>repeat_interval: 4h</code>；</li>
+<li><strong>inhibit_rules</strong>：ServiceDown 触发时抑制同服务的 HighLatency/HighErrorRate（根因告警压制衍生告警）。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<ul>
+<li><strong>标签基数爆炸</strong>：把 orderId/userId 等高基数值塞进 Label → TSDB 序列数失控、内存与磁盘双杀。<strong>Label 只放低基数维度</strong>（service/instance/status/reason）；</li>
+<li><strong>Histogram 桶设计不合理</strong>：默认桶覆盖不了业务延迟分布（P99 落到最后一个桶），按业务 SLO 自定义桶边界；</li>
+<li><strong><code>up == 0</code> 误报</strong>：目标短时网络抖动即触发——配 <code>for: 1m</code> 持续时间；</li>
+<li><strong>告警无分级</strong>：critical 和 warning 都发钉钉 → 疲劳后真告警被忽略。</li>
+</ul>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>recording rules</strong>：高频复杂 PromQL 预计算为新的时序指标，大盘查询从秒级降到毫秒级；</li>
+<li><strong>Thanos/Cortex</strong>：多集群 Prometheus 长期存储与全局视图（单机 TSDB 保留 15 天是常态）；</li>
+<li><strong>SLO 告警</strong>：从"阈值告警"（CPU&gt;85%）演进到"错误预算燃烧率告警"（多窗口 2%→5% SLO 消耗速率），告警数量下降一个量级。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>需求</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单集群云原生监控</td>
+<td>Prometheus + Grafana（默认答案）</td>
+</tr>
+<tr>
+<td>多集群/长期存储</td>
+<td>Prometheus + Thanos / Cortex</td>
+</tr>
+<tr>
+<td>已重度 Grafana</td>
+<td>Loki（日志同源面板联动）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="logging">模块三 · Logging 深度：分布式日志体系</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<p><strong>分布式日志的三难</strong>：分散（多服务多机器）、格式乱（各服务各写各的）、关联断（缺统一 TraceId）。集中式日志系统 = 统一采集 + 缓冲削峰 + 存储检索 + 可视化告警。</p>
+<p><strong>三大存储路线</strong>：</p>
+<ul>
+<li><strong>ELK</strong>：Elasticsearch 全文倒排索引 → 查询强、成本高；</li>
+<li><strong>Loki</strong>：只索引 Label 不索引正文 → 成本低、全文检索弱；</li>
+<li><strong>ClickHouse</strong>：列式存储 + MergeTree → 写入吞吐数百万行/秒、聚合分析强、存储成本比 ES 低 60-80%。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<p><strong>生产级 ELK 架构</strong>（Kafka 削峰是必须项）：</p>
+<pre><code class="language-text">Filebeat（各机器采集）→ Kafka（app-logs topic 缓冲削峰）
+   → Logstash 集群（grok/json/date/geoip 解析）→ ES 集群（按天索引 logs-YYYY.MM.dd）
+   → Kibana / ClickVisual
+</code></pre>
+<p><strong>Filebeat 关键配置</strong>：<code>multiline.pattern</code> 按时间戳前缀合并 Java 堆栈日志（否则异常栈被切成几十行无法检索）；<code>fields.service/env</code> 打标；输出走 Kafka 而非直连 ES。</p>
+<p><strong>Logstash filter 三件套</strong>：<code>json</code>（解析结构化日志）、<code>date</code>（统一时间戳为 <code>@timestamp</code>，对齐跨服务时钟）、<code>grok</code>（非结构化文本提取字段）。</p>
+<p><strong>ClickHouse 日志表设计要点</strong>（海量日志首选）：</p>
+<pre><code class="language-sql">CREATE TABLE logs (
+    timestamp DateTime, trace_id String,
+    service LowCardinality(String), level LowCardinality(String),
+    host LowCardinality(String), message String, exception String,
+    date Date DEFAULT toDate(timestamp)
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMMDD(date)          -- 按天分区，过期直接 DROP PARTITION
+ORDER BY (service, level, timestamp)   -- 排序键对齐查询热点
+TTL date + INTERVAL 30 DAY;            -- 自动清理
+</code></pre>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ul>
+<li><strong>Java 堆栈日志不合并</strong>：缺 <code>multiline</code> 配置，一条 NPE 栈被切成 N 条独立日志，检索与统计全错；</li>
+<li><strong>直连 ES 无缓冲</strong>：流量峰值打爆 ES 集群 → 必须 Kafka 削峰；</li>
+<li><strong>全链路无 TraceId</strong>：日志里查不到请求标识，跨服务问题只能靠时间戳猜——日志格式规约必须含 traceId（MDC 透传，见 <a href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring 工程化</a>）；</li>
+<li><strong>ES 索引无生命周期</strong>：一年索引不删，磁盘与查询性能双降——按天索引 + ILM/TTL。</li>
+</ul>
+<h3 id="4_2">4. 优化进阶</h3>
+<p><strong>分级日志策略</strong>：ERROR 全量采集；INFO 按服务采样；DEBUG 线上默认关闭、排障时通过配置中心动态开启（注意日志量瞬时放大的磁盘风险）。</p>
+<p><strong>日志与链路联动</strong>：Kibana/Grafana 面板嵌入 TraceId 跳转链接，从日志一键跳 SkyWalking 调用链，反之以 traceId 检索全链路日志。</p>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>适用场景</th>
+<th>成本</th>
+<th>性能</th>
+<th>复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ELK</td>
+<td>大型企业、全文检索强需求</td>
+<td>高</td>
+<td>查询快</td>
+<td>高</td>
+</tr>
+<tr>
+<td>Loki</td>
+<td>中小团队、已用 Grafana</td>
+<td>低</td>
+<td>写入快</td>
+<td>低</td>
+</tr>
+<tr>
+<td>ClickHouse</td>
+<td>海量日志、聚合分析多</td>
+<td>中（省 60-80%）</td>
+<td>写入/查询均衡</td>
+<td>中</td>
+</tr>
+<tr>
+<td>云 SLS/CLS</td>
+<td>快速上线、运维能力弱</td>
+<td>按量</td>
+<td>优秀</td>
+<td>极低</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tracing-skywalking">模块四 · Tracing 深度：SkyWalking 源码级解析</h2>
+<h3 id="1_3">1. 核心原理</h3>
+<p>SkyWalking = Java Agent（字节码增强，零侵入）+ OAP（Observability Analysis Platform，分析后端）+ UI。探针侧核心机制：</p>
+<ul>
+<li><strong>javaagent premain 入口</strong>：JVM 启动时 <code>-javaagent</code> 触发 <code>SkyWalkingAgent.premain</code>，拿到 <code>Instrumentation</code> 实例；</li>
+<li><strong>ByteBuddy 增强</strong>：<code>AgentBuilder</code> 按插件定义的匹配规则拦截目标类，<code>Transformer</code> 织入埋点码；</li>
+<li><strong>自定义 AgentClassLoader</strong>：插件 jar 从 <code>plugins/</code>、<code>activations/</code> 目录加载，与业务类加载器隔离——避免探针类与业务类依赖冲突，同时 <code>registerAsParallelCapable()</code> 开启并行类加载（JDK7+ 锁粒度细化到单个类，解决类加载器死锁）；</li>
+<li><strong>BootService SPI 机制</strong>：agent 内部服务（TraceSegmentServiceClient、ContextManager、JVMMetricsSender…）通过 <code>META-INF/services</code> 声明，<code>ServiceManager</code> 按优先级 <code>prepare→boot→onComplete</code> 启动，关闭时逆序；<code>@DefaultImplementor</code>/<code>@OverrideImplementor</code> 支持覆盖替换（如默认 gRPC 上报换 Kafka 上报）；</li>
+<li><strong>Bootstrap 注入</strong>：<code>BootstrapInstrumentBoost.inject</code> 把必要的探针类注入 BootstrapClassLoader，解决 Bootstrap 加载器访问不到 AppClassLoader 内容的问题；JDK9+ 再经 <code>JDK9ModuleExporter</code> 绕开模块化封闭。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<p><strong>零侵入接入</strong>：</p>
+<pre><code class="language-bash">java -javaagent:/opt/skywalking-agent/skywalking-agent.jar \
+     -Dskywalking.agent.service_name=order-service \
+     -Dskywalking.collector.backend_service=skywalking-oap:11800 \
+     -jar order-service.jar
+</code></pre>
+<p><strong>业务自定义 Span</strong>（把业务动作织进调用链）：</p>
+<pre><code class="language-java">public PaymentResult processPayment(PaymentRequest request) {
+    AbstractSpan span = ContextManager.createLocalSpan(&quot;processPayment&quot;);
+    span.tag(&quot;orderId&quot;, request.getOrderId());
+    try {
+        ThirdPartyResult result = callThirdPartyPayment(request);
+        span.tag(&quot;thirdParty&quot;, result.getChannel());
+        return ...;
+    } catch (Exception e) {
+        span.errorOccurred(); span.log(e); throw e;
+    } finally {
+        ContextManager.stopSpan();   // 必须 finally 释放，否则上下文错乱
+    }
+}
+</code></pre>
+<p><strong>agent.config 关键项</strong>：<code>agent.service_name</code>（必填）、<code>collector.backend_service</code>（必填）、<code>plugin.peer_max_length</code>（≤3 时回落默认 200）。</p>
+<h3 id="3_3">3. 踩坑规避</h3>
+<ul>
+<li><strong>配置优先级陷阱</strong>：启动参数 &gt; 系统环境变量 &gt; agent.config——改 config 不生效时先查是否被 <code>-D</code> 覆盖；</li>
+<li><strong>service_name 未设置直接抛异常</strong>：<code>ExceptionInInitializerError</code>，agent 静默失败导致无链路数据——启动日志确认 "SkyWalking agent" 启动成功；</li>
+<li><strong>增强类缓存</strong>：<code>IS_CACHE_ENHANCED_CLASS</code> 开启后类缓存到磁盘/内存，二次启动加速，但插件升级后要清缓存；</li>
+<li><strong>自研 agent 借鉴</strong>：自定义类加载器 + SPI 服务化 + ByteBuddy 织入，是自研监控探针的标准三件套。</li>
+</ul>
+<h3 id="4_3">4. 优化进阶</h3>
+<p><strong>采样策略</strong>：<code>SamplingService</code> 按采样率控制 Trace 上报量（头部全采 + 尾部概率采样），平衡可观测性与开销。</p>
+<p><strong>定制化改造路径</strong>（大厂常见）：日志上报换 Kafka（<code>@OverrideImplementor(LogReportServiceClient.class)</code> 的 <code>KafkaLogReporterServiceClient</code>）、自定义 traceId 规则、私有协议上报。</p>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>背景</th>
+<th>侵入性</th>
+<th>生态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SkyWalking</td>
+<td>Apache 顶级</td>
+<td>Java Agent 零侵入</td>
+<td>国内主流</td>
+</tr>
+<tr>
+<td>Jaeger</td>
+<td>Uber / CNCF</td>
+<td>SDK 接入</td>
+<td>K8s 生态好</td>
+</tr>
+<tr>
+<td>Zipkin</td>
+<td>Twitter</td>
+<td>SDK 接入</td>
+<td>老牌成熟</td>
+</tr>
+<tr>
+<td>OpenTelemetry</td>
+<td>CNCF 标准</td>
+<td>统一 API/数据格式</td>
+<td>趋势：各家适配 OTel</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块五 · 系统性能监控与负载排查</h2>
+<h3 id="1_4">1. 核心原理</h3>
+<p><strong>CPU 时间构成</strong>（vmstat/top 解读基础）：us（用户态）/sy（内核态）/id（空闲）/wa（IO 等待）/ni（低优先级）/hi+si（硬软中断）/st（虚拟化被偷）。</p>
+<p><strong>Load Average</strong> = 运行队列 + 等待运行 + 不可中断睡眠（D 状态，等 IO）。三窗口（1/5/15 分钟）看趋势：1min &gt; 5min &gt; 15min 表示负载在涨。</p>
+<p><strong>上下文切换代价</strong>：寄存器保存恢复（μs 级）+ 页表切换/TLB 失效（数十 μs~ms 级）——时间片 10ms、切换 10μs 时占比仅 0.1%，可接受。</p>
+<h3 id="2_4">2. 生产落地</h3>
+<p><strong>负载飙高排查六步法</strong>：</p>
+<pre><code class="language-bash"># ① 看负载与 CPU 构成：wa 高→IO 瓶颈；us 高→计算瓶颈
+uptime &amp;&amp; vmstat 1 3
+# ② 定位高 CPU 进程（%CPU 可超 100%，多核累加）
+top -o %CPU
+# ③ 进程内线程级分析
+top -Hp &lt;pid&gt;
+# ④ tid 转十六进制对照线程栈（tid 十进制 → nid 十六进制）
+printf '%x\n' &lt;tid&gt; &amp;&amp; jstack &lt;pid&gt; | grep -A 30 &lt;hex-nid&gt;
+# ⑤ 临时止血：renice 降优先级 / cpulimit 限核
+renice +10 -p &lt;pid&gt;
+# ⑥ 根治：算法优化（递归→动态规划等）
+</code></pre>
+<p><strong>异常判据速查</strong>：us 持续 &gt;70% 应用计算密集；sy 持续 &gt;30% 系统调用过多（小 IO/频繁建线程）；wa 持续 &gt;20% IO 瓶颈；st 持续 &gt;10% 宿主机 CPU 超配。</p>
+<p><strong>负载阈值</strong>：安全负载 = CPU 核心数 × 0.7。IO 密集型服务负载长期 &gt;1 属正常（等 IO 不计 CPU）。</p>
+<p><strong>线程数配置公式</strong>（IO 密集型）：<code>最优线程数 = CPU 核心数 × (1 + IO等待时间/CPU计算时间)</code>，例：4 核、80% 时间等 IO → 20 线程。</p>
+<h3 id="3_4">3. 踩坑规避</h3>
+<ul>
+<li><strong>单份线程栈定论</strong>：<code>jstack</code> 单份快照会错过真相——连续 3 份间隔 5s，同一代码位置多次出现才是热点；</li>
+<li><strong>只看 CPU 不看 Load</strong>：Load 高但 CPU 低 = IO/D 状态进程堆积，方向完全相反；</li>
+<li><strong>CPU 密集加线程</strong>：计算密集场景加线程只增加切换开销，应加核或优化算法；</li>
+<li><strong>vmstat 的 b 列忽视</strong>：b（阻塞队列）持续非零说明 IO 子系统饱和。</li>
+</ul>
+<h3 id="4_4">4. 优化进阶</h3>
+<p><strong>任务分型治理</strong>：CPU 密集（视频编码/加解密/ML 推理）纵向扩核 + 多进程 + SIMD/GPU；IO 密集（Web/DB/爬虫）横向扩机器 + 异步 IO + 连接池 + 缓存；混合型分段优化（读 DB 用连接池批量、计算段多进程、写 Redis 用 pipeline）。</p>
+<h3 id="5_4">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>CPU 密集型</th>
+<th>IO 密集型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU 使用率</td>
+<td>高（&gt;70%）</td>
+<td>低（&lt;30%）</td>
+</tr>
+<tr>
+<td>主要瓶颈</td>
+<td>计算能力</td>
+<td>IO 等待</td>
+</tr>
+<tr>
+<td>线程策略</td>
+<td>≈ CPU 核心数</td>
+<td>可远大于核心数</td>
+</tr>
+<tr>
+<td>扩展方式</td>
+<td>多进程/加核</td>
+<td>多线程/协程/异步 IO</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="skywalking-410">模块六 · SkyWalking 插件与字节码增强（源码 4–10）</h2>
+<blockquote>
+<p>加工来源：javaup SkyWalking 源码 4–10（https://javaup.chat/tech-sharing/skywalking-source/skywalking-part-4/ 起）。1–3 篇见模块四。</p>
+</blockquote>
+<h3 id="1_5">1. 核心原理</h3>
+<p>插件在 <code>skywalking-plugin.def</code> 里登记「名字 = 定义类」。定义类继承 <code>ClassInstanceMethodsEnhancePluginDefine</code> 或静态方法对应的基类，声明要增强的类（<code>enhanceClass</code>）、构造/实例/静态拦截点，以及真正的拦截器。拦截器是 <code>beforeMethod</code> / <code>afterMethod</code> / <code>handleMethodException</code>，里面用 <code>ContextManager.createLocalSpan</code> 包住原方法。</p>
+<p>版本不靠读 jar 版本号。<code>witnessClasses</code> / <code>witnessMethods</code> 问当前应用的 ClassLoader：见证类或见证方法在不在。Spring 3/4/5 各认一个只有该版本才有的类；Dubbo 2.7 和 3 靠 <code>getServerContext</code> 的返回类型区分。查找走 <code>AgentClassLoader</code> 的双亲委派，最终问到应用自己的加载器。</p>
+<h3 id="2_5">2. 生产落地</h3>
+<p>类加载时 <code>Transformer#transform</code> 用 <code>PluginFinder</code> 找出所有匹配插件（同名类可以挂多条），逐个 <code>define()</code>。<code>define</code> 先做见证检查，不过就跳过该插件；通过后 <code>enhance()</code> 分静态方法和实例/构造方法织入，并用 <code>EnhanceContext</code> 记下这块字节码已经被改过。</p>
+<p>线程池场景要单独插件：把 <code>Runnable</code>/<code>Callable</code> 包一层，把 trace context 带进工作线程，否则异步任务的 span 会断。业务方法可用 <code>@Trace</code> 显式开 span。</p>
+<h3 id="3_5">3. 踩坑规避</h3>
+<ul>
+<li>见证类写错：插件静默不生效，链路里缺某中间件，启动日志里会有 witness does not exist。</li>
+<li>升级框架后见证方法签名变了：旧插件不激活，看起来像「探针坏了」。</li>
+<li>线程池不包装：HTTP span 有了，异步任务变成新的 trace。</li>
+</ul>
+<h3 id="4_5">4. 优化进阶</h3>
+<p><code>WitnessFinder</code> 按 ClassLoader 缓存 <code>TypePool</code>，避免每个类都重新描述一遍。插件匹配分精确类名表和间接匹配列表，热路径先查名字。</p>
+<h3 id="5_5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>自动插件</th>
+<th><code>@Trace</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>覆盖</td>
+<td>JDBC、MVC、Dubbo 等已有插件</td>
+<td>自研方法</td>
+</tr>
+<tr>
+<td>版本</td>
+<td>见证类/方法</td>
+<td>不区分框架版本</td>
+</tr>
+<tr>
+<td>风险</td>
+<td>增强失败通常只是没有 span</td>
+<td>注解漏加就没有 span</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">待补充清单</h2>
+<ul>
+<li>Prometheus 长期存储、SLO、OpenTelemetry → <a href="05.3-otel-slo-thanos.html">05.3</a></li>
+<li>K8s 指标与 HPA → <a href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 模块四</a></li>
+<li>SkyWalking 源码 1–10：<strong>已完成</strong>（模块四 + 模块六）</li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>

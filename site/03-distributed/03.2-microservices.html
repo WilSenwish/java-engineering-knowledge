@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>03.2 微服务架构工程化</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script>
+    (function () {
+      var mode = "system";
+      try {
+        var saved = localStorage.getItem("kb-theme");
+        if (saved === "light" || saved === "dark" || saved === "system") mode = saved;
+      } catch (e) {}
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme-mode", mode);
+    })();
+  </script>
+</head>
+<body data-root="../">
+  <div class="read-progress" aria-hidden="true"><span id="read-bar"></span></div>
+  <div class="toolbar">
+    <a class="brand" href="../index.html">Java 工程知识库</a>
+    <span class="tools">
+      <button class="btn" id="listenBtn" type="button">▶ 听</button>
+      <input id="q" class="search" type="search" placeholder="搜索标题与正文" autocomplete="off">
+      <button class="btn" id="themeBtn" type="button">◐ 系统</button>
+      <button class="btn" id="topBtn" type="button">↑ 顶部</button>
+      <button class="btn" id="botBtn" type="button">↓ 底部</button>
+      <button class="btn menu-btn" id="menuBtn" type="button">目录</button>
+    </span>
+  </div>
+  <div id="search-hits"></div>
+  <div class="shell">
+    <nav class="toc"><h3>目录</h3><a class="" href="../index.html">首页</a><details><summary>域1 · Java 核心</summary><div class='group'><a class="" href="../01-java-core/01.1-java-basics.html">01.1 Java 基础与语法工程化</a><a class="" href="../01-java-core/01.2-collections.html">01.2 Java 集合工程化（含 HashMap 深度原理）</a><a class="" href="../01-java-core/01.3-concurrency.html">01.3 Java 并发编程工程化</a><a class="" href="../01-java-core/01.4-jvm.html">01.4 JVM 内核与线上排查</a><a class="" href="../01-java-core/01.5-network-tcp.html">01.5 计算机网络 · TCP 深度</a><a class="" href="../01-java-core/01.6-os-fundamentals.html">01.6 操作系统基础与进程线程模型</a><a class="" href="../01-java-core/01.7-design-patterns.html">01.7 设计模式与编码工程化</a></div></details><details><summary>域2 · 后端组件</summary><div class='group'><a class="" href="../02-backend-components/02.1-mysql.html">02.1 MySQL 工程化</a><a class="" href="../02-backend-components/02.2-redis.html">02.2 Redis 工程化</a><a class="" href="../02-backend-components/02.3-spring-mybatis.html">02.3 Spring &amp; MyBatis 工程化</a></div></details><details open><summary>域3 · 分布式</summary><div class='group'><a class="" href="../03-distributed/03.1-distributed-theory.html">03.1 分布式理论与核心方案</a><a class="active" href="../03-distributed/03.2-microservices.html">03.2 微服务架构工程化</a><a class="" href="../03-distributed/03.3-solution-design.html">03.3 高并发方案设计精选</a></div></details><details><summary>域4 · 交付与云原生</summary><div class='group'><a class="" href="../04-delivery-cloudnative/04.1-ai-native-delivery.html">04.1 AI 原生研发与 Coding Agent 工程化</a><a class="" href="../04-delivery-cloudnative/04.2-cloud-native.html">04.2 传统云原生工程化（Docker · K8s · 发布策略）</a></div></details><details><summary>域5 · 运维与可观测</summary><div class='group'><a class="" href="../05-ops-observability/05.1-troubleshooting.html">05.1 生产运维与线上排查实战</a><a class="" href="../05-ops-observability/05.2-observability.html">05.2 可观测性三支柱深度：Metrics / Logging / Tracing</a><a class="" href="../05-ops-observability/05.3-otel-slo-thanos.html">05.3 OpenTelemetry · SLO 错误预算 · Prometheus 长期存储</a></div></details><details><summary>域6 · 性能与 AI</summary><div class='group'><a class="" href="../06-performance-ai/06.1-ai-frontier.html">06.1 AI 前沿：Agent / RAG / 工具调用 / AI 编程</a></div></details><details><summary>域7 · 实战案例</summary><div class='group'><a class="" href="../07-business-cases/07.1-projects.html">07.1 实战项目案例库</a></div></details></nav>
+    <main class="wrap">
+      <article><h1 id="032">03.2 微服务架构工程化</h1>
+<blockquote>
+<p>知识域：域3 分布式与高可用架构
+加工来源：sources/javaguide/distributed-system/microservices-interview-questions.md
+关联文档：<a href="03.1-distributed-theory.html">03.1 分布式理论</a> / <a href="../07-business-cases/07.1-projects.html">07.1 项目案例库</a></p>
+</blockquote>
+<h2 id="_1">模块一：服务拆分与领域边界</h2>
+<h3 id="1">1. 核心原理</h3>
+<ul>
+<li><strong>拆分方法论</strong>：① <strong>DDD 限界上下文</strong>（聚合根/领域边界，最正统）；② 业务能力（"能独立变化的部分"）；③ 组织结构（康威定律：系统结构反映沟通结构）。</li>
+<li><strong>拆分粒度权衡</strong>：太粗=单体（部署耦合）；太细=分布式单体（一次业务调用 10+ 次 RPC，延迟与故障率叠加）。<strong>经验值：团队 5~10 人维护一个服务，服务间调用链 ≤ 5 跳</strong>。</li>
+<li><strong>拆与不拆的信号</strong>：独立伸缩需求（秒杀服务 vs 普通服务）、发布频率差异大、技术栈异构需求、故障隔离要求高。</li>
+</ul>
+<h3 id="2">2. 生产落地</h3>
+<ul>
+<li><strong>服务分层（阿里规范）</strong>：</li>
+</ul>
+<pre><code>网关层（流量接入/鉴权/限流）
+  → 聚合层/BFF（页面/端侧适配）
+    → 基础服务层（用户/商品/库存/订单，按领域拆分）
+      → 平台层（消息/存储/搜索/支付通道）
+</code></pre>
+<ul>
+<li><strong>一个服务的标准目录</strong>：<code>api</code>（对外契约，DTO + Feign 接口）/ <code>domain</code>（领域模型）/ <code>infrastructure</code>（外部适配）/ <code>application</code>（用例编排）/ <code>bootstrap</code>（启动装配）。</li>
+<li><strong>契约先行</strong>：接口 DTO 定义在独立的 api 包（或 IDL），消费方只依赖契约不依赖实现，避免 jar 传染式升级。</li>
+</ul>
+<h3 id="3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>改一个字段要发 5 个服务</td>
+<td>共享 jar / 数据库共享</td>
+<td>契约独立版本化；<strong>一服务一库</strong></td>
+</tr>
+<tr>
+<td>调用链绕地球</td>
+<td>拆分过细</td>
+<td>领域合并；聚合层裁剪响应</td>
+</tr>
+<tr>
+<td>联调环境互相踩踏</td>
+<td>共享测试环境</td>
+<td>每人一套 Namespace（K8s）/ Mock（WireMock）</td>
+</tr>
+<tr>
+<td>服务循环依赖</td>
+<td>领域边界不清</td>
+<td>引入领域事件解耦（A → 事件 → B）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4">4. 优化进阶</h3>
+<ul>
+<li><strong>防腐层（ACL）</strong>：与遗留/外部系统对接时，用适配层把外部模型翻译为内部领域模型，防止外部模型渗透污染核心域。</li>
+<li><strong>演进式拆分</strong>：单体 → 模块化单体（先拆包不拆进程）→ 抽离边缘服务 → 核心域服务化。<strong>不要一次性重写</strong>。</li>
+</ul>
+<h3 id="5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>拆分依据</th>
+<th>稳定性</th>
+<th>实施难度</th>
+<th>适用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>技术分层（controller/service）</td>
+<td>低</td>
+<td>低</td>
+<td>反模式</td>
+</tr>
+<tr>
+<td>业务能力</td>
+<td>中</td>
+<td>中</td>
+<td>中小团队</td>
+</tr>
+<tr>
+<td>DDD 限界上下文</td>
+<td>高</td>
+<td>高</td>
+<td>复杂业务/大团队</td>
+</tr>
+<tr>
+<td>组织团队</td>
+<td>中</td>
+<td>低</td>
+<td>多团队并行</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">模块二：服务通信与治理</h2>
+<h3 id="1_1">1. 核心原理</h3>
+<ul>
+<li><strong>同步 vs 异步</strong>：同步（HTTP/RPC，实时结果、耦合强）/ 异步（MQ/事件，削峰解耦、最终一致）。</li>
+<li><strong>服务治理清单</strong>：注册发现、负载均衡（随机/轮询/一致性哈希/最小活跃）、路由（版本/标签/灰度）、限流（QPS/并发数/线程数）、熔断（错误率/慢调用比例）、降级（兜底数据/简化流程）、超时（分层设置）、重试（仅幂等）。</li>
+<li><strong>熔断三态</strong>：Closed（正常）→ Open（失败达阈值，直接拒绝）→ Half-Open（放少量试探，成功则 Closed）。</li>
+</ul>
+<h3 id="2_1">2. 生产落地</h3>
+<ul>
+<li><strong>Sentinel 规则配置化</strong>：热点参数限流（<code>@SentinelResource(value="queryOrder", blockHandler="fallback")</code> + 参数索引）、系统自适应保护（Load1/CPU/RT 多维度）、规则持久化到 Nacos（动态生效）。</li>
+</ul>
+<pre><code class="language-java">// Sentinel 熔断 + 降级示例
+@SentinelResource(
+    value = &quot;createOrder&quot;,
+    blockHandler = &quot;createOrderBlocked&quot;,   // 限流降级
+    fallback = &quot;createOrderFallback&quot;,      // 异常降级
+    exceptionsToIgnore = {BizException.class})
+public OrderVO createOrder(OrderCreateCmd cmd) {
+    return orderService.create(cmd);
+}
+
+// 降级方法签名需与原方法一致 + 最后一个参数 Throwable
+public OrderVO createOrderBlocked(OrderCreateCmd cmd, BlockException e) {
+    return OrderVO.busy(&quot;系统繁忙，请稍后重试&quot;);
+}
+</code></pre>
+<ul>
+<li><strong>超时分层配置（铁律）</strong>：网关 3s → BFF 2s → 服务 1.5s → DB 500ms。<strong>下游超时必须 &lt; 上游超时</strong>，否则上游等超时了下游还在跑（资源泄漏）。</li>
+<li><strong>链路追踪</strong>：SkyWalking Agent 零侵入接入；业务日志打 traceId（MDC）；慢调用分析定位真实瓶颈（常是下游 DB 而非当前服务）。</li>
+</ul>
+<h3 id="3_1">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>限流只挡外部不挡内部</td>
+<td>只配了网关限流</td>
+<td><strong>分层限流</strong>：网关 + 服务 + 依赖方</td>
+</tr>
+<tr>
+<td>熔断阈值形同虚设</td>
+<td>阈值设太高（如错误率 90%）</td>
+<td>错误率 50% / 慢调用比例 60% 起步压测标定</td>
+</tr>
+<tr>
+<td>降级逻辑把 DB 打挂</td>
+<td>降级回调里查全量数据</td>
+<td>降级=本地缓存/静态兜底，<strong>禁止再查重依赖</strong></td>
+</tr>
+<tr>
+<td>重试导致下游雪崩</td>
+<td>无退避重试 + 重试风暴</td>
+<td>指数退避 + 抖动 + 熔断内不重试</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_1">4. 优化进阶</h3>
+<ul>
+<li><strong>自适应限流</strong>：Sentinel 系统规则（LOAD1 &gt; CPU 核数×2.5 触发）比固定 QPS 更抗突发。</li>
+<li><strong>隔离策略</strong>：舱壁模式（线程池隔离：不同依赖不同池，一个慢不拖垮全部）/ 信号量隔离（轻量，无排队，适合短依赖）。</li>
+<li><strong>混沌工程</strong>：故障注入（ChaosBlade）验证熔断/降级链路是否真实生效——<strong>规则不演练 = 不存在</strong>。</li>
+</ul>
+<h3 id="5_1">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>治理能力</th>
+<th>Sentinel</th>
+<th>Hystrix（停更）</th>
+<th>Resilience4j</th>
+<th>Istio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>限流</td>
+<td>✅ 强（热点/系统）</td>
+<td>弱</td>
+<td>中</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>熔断降级</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>侵入性</td>
+<td>注解/API</td>
+<td>注解</td>
+<td>注解</td>
+<td>零侵入</td>
+</tr>
+<tr>
+<td>生态</td>
+<td>Spring Cloud Alibaba</td>
+<td>Netflix</td>
+<td>Spring</td>
+<td>K8s</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">模块三：数据一致性与事务</h2>
+<h3 id="1_2">1. 核心原理</h3>
+<ul>
+<li><strong>微服务数据一致性原则</strong>：放弃跨服务强事务，用<strong>最终一致 + 补偿 + 对账</strong>；每个服务<strong>独立数据库</strong>（防耦合），跨服务数据只能通过接口/事件。</li>
+<li>** Saga 编排式 vs 协同式**：编排式（Orchestration，中央协调器推进，易观测）/ 协同式（Choreography，事件驱动，松耦合但难追踪）。</li>
+<li><strong>幂等三件套</strong>：唯一业务号、状态机约束、去重存储（Redis SETNX + DB 唯一索引双保险）。</li>
+</ul>
+<h3 id="2_2">2. 生产落地</h3>
+<ul>
+<li><strong>订单主链路最终一致设计</strong>（典型五服务）：</li>
+</ul>
+<pre><code>订单服务(创建: 本地事务+outbox)
+  → MQ → 库存服务(预占, 幂等: 唯一索引 order_id)
+  → MQ → 优惠券服务(核销, TCC 或消息+补偿)
+  → MQ → 支付服务(发起支付)
+  → MQ → 履约服务(发货)
+任何一步失败 → 反向补偿消息 → 各服务回滚
+</code></pre>
+<ul>
+<li><strong>对账兜底</strong>：每日定时任务比对订单/库存/支付流水，发现不一致进人工工单 + 自动重试。</li>
+</ul>
+<h3 id="3_2">3. 踩坑规避</h3>
+<ol>
+<li><strong>消息无序</strong>：同订单的"创建"晚于"取消"到达 → 用版本号/状态机过滤（只接受状态合法流转的事件）。</li>
+<li><strong>消息重复</strong>：MQ at-least-once 语义必然重复 → 消费端幂等（<code>INSERT ... ON DUPLICATE KEY</code> 或状态机）。</li>
+<li><strong>补偿失败</strong>：补偿接口本身不可用 → 补偿任务重试 + 死信队列 + 人工介入面板。<strong>补偿必须先于业务失败发现，而不是等用户投诉</strong>。</li>
+<li><strong>分布式事务中间件单点</strong>：Seata TC 挂了全局事务全卡 → TC 高可用 + 本地事务兜底。</li>
+</ol>
+<h3 id="4_2">4. 优化进阶</h3>
+<ul>
+<li><strong>事务消息表合并扫描</strong>：outbox 表量大后按状态分区 + 批量拉取（<code>LIMIT 500</code>）+ 索引 <code>(status, next_retry_time)</code>。</li>
+<li><strong>事件溯源（Event Sourcing）</strong>：关键账务用事件流代替状态快照，天然可追溯/可回放；复杂度高，慎用于非核心域。</li>
+</ul>
+<h3 id="5_2">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>一致性时延</th>
+<th>复杂度</th>
+<th>可观测性</th>
+<th>场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Saga（编排式）</td>
+<td>秒级</td>
+<td>中</td>
+<td>好</td>
+<td>长流程业务</td>
+</tr>
+<tr>
+<td>Saga（协同式）</td>
+<td>秒级</td>
+<td>低</td>
+<td>差</td>
+<td>简单解耦</td>
+</tr>
+<tr>
+<td>TCC</td>
+<td>实时</td>
+<td>高</td>
+<td>中</td>
+<td>资金/库存强一致</td>
+</tr>
+<tr>
+<td>本地消息表</td>
+<td>秒级</td>
+<td>低</td>
+<td>好</td>
+<td><strong>通用</strong></td>
+</tr>
+<tr>
+<td>事务消息</td>
+<td>秒级</td>
+<td>低</td>
+<td>中</td>
+<td>RocketMQ</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">模块四：稳定性与可观测性</h2>
+<h3 id="1_3">1. 核心原理</h3>
+<ul>
+<li><strong>稳定性三板斧</strong>：限流（保护自己不挂）、熔断（保护自己不拖垮）、降级（牺牲非核心保核心）。</li>
+<li><strong>可观测性三支柱</strong>：Metrics（指标聚合，<code>订单创建成功率 P99 &lt; 99%</code> 告警）、Logging（结构化日志 + traceId）、Tracing（分布式链路）。</li>
+</ul>
+<h3 id="2_3">2. 生产落地</h3>
+<ul>
+<li><strong>上线 Checklist</strong>（稳定性视角）：
+  1. 接口是否有限流/熔断/降级规则
+  2. 下游依赖是否标注超时 + 配置熔断
+  3. 慢查询/慢 RPC 是否治理
+  4. 日志是否含 traceId、无敏感信息
+  5. 核心指标是否配 Grafana 看板 + 告警（成功率/RT/错误码分布）
+  6. 回滚方案（配置回滚/镜像回退/DB 回滚脚本）是否就绪</li>
+<li><strong>告警分级</strong>：P1（核心链路故障，电话+值班）/ P2（部分受损，IM）/ P3（趋势恶化，邮件）。<strong>告警必须可执行</strong>（没人看的告警=没有）。</li>
+</ul>
+<h3 id="3_3">3. 踩坑规避</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>根因</th>
+<th>对策</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>告警风暴</td>
+<td>阈值敏感 + 无收敛</td>
+<td>分组聚合 + 抑制规则（故障期间静默衍生告警）</td>
+</tr>
+<tr>
+<td>挂了监控不知道</td>
+<td>只监控服务自身，没监控依赖</td>
+<td>依赖方健康度纳入告警（DB/Redis/MQ）</td>
+</tr>
+<tr>
+<td>日志查不到</td>
+<td>无 traceId 串联 + 日志级别混乱</td>
+<td>MDC 注入 traceId；ERROR 才进告警管道</td>
+</tr>
+<tr>
+<td>压测才暴露瓶颈</td>
+<td>无常态化基线</td>
+<td>定期小规模压测；核心链路容量水位看板</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4_3">4. 优化进阶</h3>
+<ul>
+<li><strong>全链路压测</strong>：流量染色（压测标打标）→ 影子库/表隔离 → 核心链路（下单/支付）定时演练 → 容量规划（预估大促水位）。</li>
+<li><strong>SLO 驱动</strong>：定义核心接口 SLO（可用性 99.95%、P99 RT &lt; 200ms），错误预算（Error Budget）内允许发布，超预算冻结需求修稳定性。</li>
+</ul>
+<h3 id="5_3">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>方案</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>指标</td>
+<td>Prometheus + Grafana</td>
+<td>云原生标准，Pull 模型</td>
+</tr>
+<tr>
+<td>日志</td>
+<td>ELK / EFK / Loki</td>
+<td>ELK 功能全；Loki 轻（与 Grafana 一体）</td>
+</tr>
+<tr>
+<td>链路</td>
+<td>SkyWalking / Zipkin / Jaeger</td>
+<td>SkyWalking Java 生态最强（探针零侵入）</td>
+</tr>
+<tr>
+<td>告警</td>
+<td>Alertmanager / PagerDuty</td>
+<td>分级 + 值班轮转</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="nacos-api">模块补充 · Nacos 与 API 网关放在哪一层</h2>
+<blockquote>
+<p>加工来源：javaup《Nacos 架构》《API 网关技术选型》。Seata 见 <a href="03.1-distributed-theory.html">03.1</a>。Sentinel 规则细节本次未抓专文。</p>
+</blockquote>
+<h3 id="1_4">1. 核心原理</h3>
+<p>Nacos 同时做注册和配置。临时实例靠客户端心跳，偏 AP；持久实例和配置偏 CP（Raft）。健康实例过少时保护机制会把不健康实例也返回，避免发现结果变空后全体打到剩下的节点。配置变更推送，并保留历史以便回滚。</p>
+<p>Gateway 是应用网关：路由、JWT、按用户限流、熔断。Nginx 是入口反向代理：TLS、静态文件、<code>sendfile</code>、按 IP 限流。Zuul 1 是阻塞 Servlet，新项目用 WebFlux 的 Gateway。客户端负载均衡知道每个实例地址；Nginx 对客户端只暴露自己。</p>
+<h3 id="2_4">2. 生产落地</h3>
+<p>Nacos 至少 3 节点，用外部 MySQL，不用内嵌 Derby。dev/test/prod 用命名空间隔开，并打开鉴权。流量路径是 Nginx 卸 TLS 和挡恶意流量，Gateway 做登录和路由，后面才是服务。Gateway 白名单放行登录接口，其余校验令牌后把用户 id 放进下游头。</p>
+<h3 id="3_4">3. 踩坑规避</h3>
+<ul>
+<li>新项目继续用 Eureka 或 Zuul：前者已停更，后者阻塞模型扛不住连接数。</li>
+<li>一套 Nacos 不配命名空间，测试配置推到生产。</li>
+<li>在 Gateway 里托管大静态文件：那是 Nginx 的事。</li>
+<li>保护阈值不理解：故障时仍拿到坏实例，要靠客户端超时和熔断，不能假设名单全是活的。</li>
+</ul>
+<h3 id="4_4">4. 优化进阶</h3>
+<p>实例权重做灰度。配置先推一小批实例再全量。Gateway 连接池限制最大连接和空闲时间，避免把下游打满后自己也挂住。</p>
+<h3 id="5_4">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>组件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>入口、证书、静态资源</td>
+<td>Nginx</td>
+</tr>
+<tr>
+<td>Java 服务路由和鉴权</td>
+<td>Gateway</td>
+</tr>
+<tr>
+<td>注册加配置</td>
+<td>Nacos</td>
+</tr>
+<tr>
+<td>只做强一致协调</td>
+<td>ZooKeeper 或 Nacos CP</td>
+</tr>
+<tr>
+<td>多语言且不要 Spring</td>
+<td>Nginx 再加语言无关的网关</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="sentinel">模块补充 · Sentinel 的槽链</h2>
+<blockquote>
+<p>加工来源：javaup《Sentinel 基本原理》（https://javaup.chat/tech-sharing/sentinel/sentinel/principles/）。</p>
+</blockquote>
+<h3 id="1_5">1. 核心原理</h3>
+<p>一次调用先进入 Context（ThreadLocal，默认名 <code>sentinel_default_context</code>），再对每个资源 <code>SphU.entry</code>。入口先走统计槽，再走规则槽。被拒绝时抛 <code>BlockException</code>，业务要自己降级。<code>entry</code> 和 <code>exit</code> 必须成对，Context 也要 <code>exit</code>。异步换线程后 ThreadLocal 丢了，要用 <code>ContextUtil.runOnContext</code> 把上下文带过去。</p>
+<p>统计节点按维度分开：<code>ClusterNode</code> 按资源看全局，<code>DefaultNode</code> 按资源乘调用链，<code>EntranceNode</code> 按入口，来源节点按资源乘 origin。</p>
+<h3 id="2_5">2. 生产落地</h3>
+<p>默认槽顺序：选节点、建簇点、统计、热点参数、流控、授权、降级、系统保护。规则挂在对应槽上。自定义槽走 SPI，插进链里，不要改统计槽的通过/拒绝计数。</p>
+<h3 id="3_5">3. 踩坑规避</h3>
+<ul>
+<li>只 entry 不 exit：线程数和通过量一直涨，后面全部被限流。</li>
+<li>异步任务不传 Context：热点和链路限流统计到错误的入口。</li>
+<li>把业务异常当成限流：只有 <code>BlockException</code> 才是规则拒绝。</li>
+</ul>
+<h3 id="4_5">4. 优化进阶</h3>
+<p>入口流量用 SystemSlot 看 load，单资源用 FlowSlot，某个参数打爆用 ParamFlowSlot。规则动态源用 InitFunc SPI 注册，不要写死在代码里。</p>
+<h3 id="5_5">5. 选型对比</h3>
+<table>
+<thead>
+<tr>
+<th>槽</th>
+<th>决定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FlowSlot</td>
+<td>这个资源还能不能过</td>
+</tr>
+<tr>
+<td>DegradeSlot</td>
+<td>慢调用或异常比例要不要熔断</td>
+</tr>
+<tr>
+<td>AuthoritySlot</td>
+<td>来源在不在黑白名单</td>
+</tr>
+<tr>
+<td>SystemSlot</td>
+<td>整机是否过载</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_5">待补充清单</h2>
+<ul>
+<li>Nacos、Gateway、Sentinel 槽链：<strong>已完成</strong></li>
+<li>Seata 模式选型见 <a href="03.1-distributed-theory.html">03.1</a>；源码级 TC 会话无完整正文，不写</li>
+<li>秒杀与削峰 → <a href="03.3-solution-design.html">03.3</a></li>
+</ul></article>
+    </main>
+  </div>
+  <script src="../assets/search-index.js"></script>
+  <script src="../assets/app.js"></script>
+</body>
+</html>
