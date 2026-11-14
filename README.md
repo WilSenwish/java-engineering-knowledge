@@ -20,7 +20,7 @@
 ## 二、目录结构
 
 ```
-Java-Engineering-Knowledge/
+java-engineering-knowledge/
 ├── README.md                              # 本文件：总索引
 ├── Java 后端开发 & 架构・...构建规划.md     # 原始规划文档
 └── sources/                               # 原始收集层（按站点归档，保留原站结构）
@@ -315,7 +315,7 @@ docs/
 
 - **sources/** 收集层：199 个 md（194 篇内容 + 5 站点目录），全部带溯源元信息；
 - **docs/** 加工层：21 个 md（20 篇知识域文档 + 索引），七大知识域全部覆盖，统一五段式；
-- **远程仓库**：https://github.com/WilSenwish/Java-Engineering-Knowledge （main 分支；网络抖动时仅保本地）；
+- **远程仓库**：https://github.com/WilSenwish/java-engineering-knowledge （main 分支；网络抖动时仅保本地）；
 - **循环27（已完成 · 设计模式补齐）**：01.7 模块三~五；
 - **循环28（已完成 · 传统云原生）**：新建 04.2；
 - **循环29（已完成 · 大模型工程）**：06.1 模块二十；
